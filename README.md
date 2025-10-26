@@ -128,9 +128,4 @@ curl -X POST http://localhost:5000/tasks \
 
 > **Хвала Омниссии за порядок в задачах и ясность в коде!**  
 > _— Смиренный сервитор Культа Механикус_
-```
-python-dotenv==1.0.1
-SQLAlchemy==2.0.30
-typing_extensions==4.15.0
-Werkzeug==3.1.3
-```
+
