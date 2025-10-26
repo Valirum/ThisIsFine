@@ -9,20 +9,24 @@
 </head>
 <body>
   <h1>🜂 Календарь Священных Обязанностей 🜂</h1>
-
+  <button class="btn" id="toggleView" style="float: right;">Список задач в днях</button>
   <div class="controls">
-    <button data-period="week">Неделя</button>
-    <button data-period="month">Месяц</button>
-    <button data-period="year">Год</button>
-    <br><br>
-    С: <input type="date" id="start">
-    По: <input type="date" id="end">
-    <button id="applyRange">Применить</button>
+    <button class="btn" data-period="week">Неделя</button>
+    <button class="btn" data-period="month">Месяц</button>
+    <button class="btn" data-period="year">Год</button>
+    <button class="btn" id="toggleCustomRange">Другое…</button>
+
+    <div id="customRangeInputs" style="display: none; margin-top: 0.75rem;">
+      С: <input type="date" id="start">
+      По: <input type="date" id="end">
+      <button class="btn" id="applyRange">Применить</button>
+    </div>
   </div>
 
   <div id="calendar" class="calendar"></div>
   <!-- Модальные окна будут вставлены сюда скриптом -->
 
   <script src="/static/calendar.js"></script>
+
 </body>
 </html>

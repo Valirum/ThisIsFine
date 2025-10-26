@@ -72,7 +72,12 @@ window.calendarApp = (function () {
     }
 
     let currentStart, currentEnd;
-
+    let useCompactView = true; // true = кружки, false = текст задач
+    const PRIORITY_COLORS = {
+        routine: '#666666',
+        high: '#ff9900',
+        critical: '#ff3333'
+    };
     // Загрузка HTML-фрагментов модальных окон
 
     async function loadModals() {
@@ -220,6 +225,8 @@ window.calendarApp = (function () {
 
     async function renderCalendar() {
         const calendarEl = document.getElementById('calendar');
+        if (!calendarEl) return;
+
         calendarEl.innerHTML = '';
 
         const startIso = currentStart.toISOString().split('T')[0];
@@ -237,18 +244,11 @@ window.calendarApp = (function () {
         const day = new Date(currentStart);
         let currentMonthKey = null;
 
-        // Карта приоритетов для определения цвета
-        const priorityOrder = { routine: 0, high: 1, critical: 2 };
-        const priorityColors = {
-            routine: '#666666',
-            high: '#ff9900',
-            critical: '#ff3333'
-        };
-
         while (day <= currentEnd) {
             const dateStr = day.toISOString().split('T')[0];
             const monthKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}`;
 
+            // Заголовок месяца
             if (monthKey !== currentMonthKey) {
                 currentMonthKey = monthKey;
 
@@ -266,81 +266,118 @@ window.calendarApp = (function () {
                 monthHeader.style.padding = '0.5rem';
                 monthHeader.style.marginTop = '1rem';
                 monthHeader.style.fontWeight = 'bold';
+                monthHeader.style.textAlign = 'center';
                 monthHeader.textContent = `${monthName} ${year}`;
                 calendarEl.appendChild(monthHeader);
             }
 
             const dayTasks = tasksByDate[dateStr] || [];
-            const hasTasks = dayTasks.length > 0;
-
             const dayEl = document.createElement('div');
-            dayEl.className = 'day ' + (hasTasks ? 'has-tasks' : '');
+            dayEl.className = 'day';
             dayEl.style.position = 'relative';
-            dayEl.style.padding = '0.5rem 0.25rem';
+            dayEl.style.display = 'flex';
+            dayEl.style.flexDirection = 'column';
+            dayEl.style.padding = '0.25rem';
+            dayEl.style.minHeight = useCompactView ? '60px' : 'auto';
+            dayEl.style.gap = '0.15rem';
+            dayEl.dataset.date = dateStr;
 
-            // День месяца
+            // Число дня (в правом верхнем углу)
             const dayNumber = document.createElement('div');
             dayNumber.textContent = day.getDate();
-            dayNumber.style.zIndex = '1';
-            dayNumber.style.position = 'relative';
-
+            dayNumber.style.textAlign = 'right';
+            dayNumber.style.fontSize = '0.85em';
+            dayNumber.style.color = '#aaa';
+            dayNumber.style.fontWeight = 'bold';
             dayEl.appendChild(dayNumber);
 
-            if (hasTasks) {
-                // Сортируем задачи по приоритету (critical → high → routine), чтобы критические были первыми
-                const sortedTasks = [...dayTasks].sort((a, b) => {
-                    const order = { routine: 0, high: 1, critical: 2 };
-                    return order[b.priority] - order[a.priority];
-                });
+            if (useCompactView) {
+                // === Режим кружков ===
+                if (dayTasks.length > 0) {
+                    const sortedTasks = [...dayTasks].sort((a, b) => {
+                        const order = { routine: 0, high: 1, critical: 2 };
+                        return order[b.priority] - order[a.priority];
+                    });
 
-                // Ограничиваем количество отображаемых кружков (например, до 3–4), чтобы не перегружать
-                const maxBadges = 4;
-                const tasksToDisplay = sortedTasks.slice(0, maxBadges);
+                    const maxBadges = 4;
+                    const tasksToDisplay = sortedTasks.slice(0, maxBadges);
 
-                // Создаём контейнер для кружков
-                const badgeContainer = document.createElement('div');
-                badgeContainer.style.position = 'absolute';
-                badgeContainer.style.bottom = '2px';
-                badgeContainer.style.right = '2px';
-                badgeContainer.style.display = 'flex';
-                badgeContainer.style.gap = '1px'; // минимальный отступ
+                    const badgeContainer = document.createElement('div');
+                    badgeContainer.style.position = 'absolute';
+                    badgeContainer.style.bottom = '2px';
+                    badgeContainer.style.right = '2px';
+                    badgeContainer.style.display = 'flex';
+                    badgeContainer.style.gap = '1px';
 
-                tasksToDisplay.forEach(task => {
-                    const badge = document.createElement('div');
-                    badge.style.width = '8px';
-                    badge.style.height = '8px';
-                    badge.style.borderRadius = '50%';
-                    badge.style.backgroundColor = priorityColors[task.priority] || '#666';
-                    badge.style.border = '1px solid #000';
-                    badge.style.boxShadow = '0 0 1px #fff';
-                    badgeContainer.appendChild(badge);
-                });
+                    tasksToDisplay.forEach(task => {
+                        const badge = document.createElement('div');
+                        badge.style.width = '8px';
+                        badge.style.height = '8px';
+                        badge.style.borderRadius = '50%';
+                        badge.style.backgroundColor = PRIORITY_COLORS[task.priority] || '#666';
+                        badge.style.border = '1px solid #000';
+                        badge.style.boxShadow = '0 0 1px #fff';
+                        badgeContainer.appendChild(badge);
+                    });
 
-                // Если задач больше, чем отображаем — добавим "+N"
-                if (dayTasks.length > maxBadges) {
-                    const more = document.createElement('div');
-                    more.style.width = '8px';
-                    more.style.height = '8px';
-                    more.style.borderRadius = '50%';
-                    more.style.backgroundColor = '#aaa';
-                    more.style.color = '#000';
-                    more.style.fontSize = '6px';
-                    more.style.display = 'flex';
-                    more.style.alignItems = 'center';
-                    more.style.justifyContent = 'center';
-                    more.style.fontWeight = 'bold';
-                    more.textContent = `+${dayTasks.length - maxBadges}`;
-                    badgeContainer.appendChild(more);
+                    if (dayTasks.length > maxBadges) {
+                        const more = document.createElement('div');
+                        more.style.width = '8px';
+                        more.style.height = '8px';
+                        more.style.borderRadius = '50%';
+                        more.style.backgroundColor = '#aaa';
+                        more.style.color = '#000';
+                        more.style.fontSize = '6px';
+                        more.style.display = 'flex';
+                        more.style.alignItems = 'center';
+                        more.style.justifyContent = 'center';
+                        more.style.fontWeight = 'bold';
+                        more.textContent = `+${dayTasks.length - maxBadges}`;
+                        badgeContainer.appendChild(more);
+                    }
+
+                    dayEl.appendChild(badgeContainer);
                 }
-
-                dayEl.appendChild(badgeContainer);
-                dayEl.dataset.date = dateStr;
-                dayEl.addEventListener('click', () => openDayView(dateStr, dayTasks));
             } else {
-                // Внутри renderCalendar(), при создании dayEl:
-                dayEl.dataset.date = dateStr; // ← добавьте это ДАЖЕ если задач нет
-                dayEl.addEventListener('click', () => openDayView(dateStr, dayTasks));
+                // === Режим текста задач ===
+                if (dayTasks.length > 0) {
+                    const sortedTasks = [...dayTasks].sort((a, b) => {
+                        const order = { routine: 0, high: 1, critical: 2 };
+                        return order[b.priority] - order[a.priority];
+                    });
+
+                    sortedTasks.forEach(task => {
+                        const taskLine = document.createElement('div');
+                        taskLine.textContent = task.title;
+                        taskLine.style.fontSize = '0.75em';
+                        taskLine.style.padding = '0.15rem 0.25rem';
+                        taskLine.style.borderRadius = '2px';
+                        taskLine.style.color = '#ffffff';
+                        taskLine.style.backgroundColor = PRIORITY_COLORS[task.priority] || '#666';
+                        taskLine.style.whiteSpace = 'nowrap';
+                        taskLine.style.overflow = 'hidden';
+                        taskLine.style.textOverflow = 'ellipsis';
+                        taskLine.title = task.title;
+
+                        // Клик по задаче — сразу в редактирование
+                        taskLine.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            showEditTask(task);
+                        });
+
+                        dayEl.appendChild(taskLine);
+                    });
+                } else {
+                    // Пустой день — оставляем минимальную высоту
+                    dayEl.style.minHeight = '60px';
+                }
             }
+
+            // Клик по дню — открыть список задач
+            dayEl.addEventListener('click', () => {
+                openDayView(dateStr, dayTasks);
+            });
+
             calendarEl.appendChild(dayEl);
             day.setDate(day.getDate() + 1);
         }
@@ -410,11 +447,14 @@ window.calendarApp = (function () {
     }
 
     function customRange() {
-        const start = document.getElementById('start').value;
-        const end = document.getElementById('end').value;
-        if (!start || !end) return alert('Укажите обе даты');
-        currentStart = new Date(start);
-        currentEnd = new Date(end);
+        const startInput = document.getElementById('start').value;
+        const endInput = document.getElementById('end').value;
+        if (!startInput || !endInput) {
+            alert('Укажите обе даты');
+            return;
+        }
+        currentStart = new Date(startInput);
+        currentEnd = new Date(endInput);
         renderCalendar();
     }
 
@@ -423,23 +463,68 @@ window.calendarApp = (function () {
         if (modal) modal.style.display = 'none';
     }
 
-    // Инициализация
-    function init() {
-        // Кнопки периода
-        document.querySelectorAll('[data-period]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                setPeriod(e.target.getAttribute('data-period'));
-            });
+    function setupGlobalModalHandlers() {
+        // Закрытие по Esc
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeAllModals();
+            }
         });
 
-        // Кнопка диапазона
-        document.getElementById('applyRange')?.addEventListener('click', customRange);
-
-        // Загружаем модальные окна
-        loadModals().then(() => {
-            setPeriod('week');
+        // Закрытие по клику вне modal-content
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                closeAllModals();
+            }
         });
     }
+
+    function closeAllModals() {
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
+    }
+
+    // Инициализация
+    function init() {
+    // Переключение видимости кастомного диапазона
+    document.getElementById('toggleCustomRange')?.addEventListener('click', () => {
+        const inputs = document.getElementById('customRangeInputs');
+        const isVisible = inputs.style.display === 'block';
+        inputs.style.display = isVisible ? 'none' : 'block';
+
+        // Меняем текст кнопки для ясности (опционально)
+        const btn = document.getElementById('toggleCustomRange');
+        btn.textContent = isVisible ? 'Другое…' : 'Скрыть';
+    });
+
+    // Применение диапазона
+    document.getElementById('applyRange')?.addEventListener('click', () => {
+        window.calendarApp.customRange();
+    });
+    // Кнопки периода
+    document.querySelectorAll('[data-period]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            setPeriod(e.target.getAttribute('data-period'));
+        });
+    });
+
+    // Кнопка диапазона
+    document.getElementById('applyRange')?.addEventListener('click', customRange);
+
+    // Кнопка переключения режима отображения дней
+    document.getElementById('toggleView')?.addEventListener('click', () => {
+        useCompactView = !useCompactView;
+        document.getElementById('toggleView').textContent =
+            useCompactView ? 'Список задач в днях' : 'Кружки приоритетов';
+        renderCalendar();
+    });
+
+    // Загружаем модальные окна
+    loadModals().then(() => {
+        setPeriod('week');
+    });
+}
 
     return { init, setPeriod, customRange, closeModal };
 })();
