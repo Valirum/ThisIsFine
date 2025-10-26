@@ -464,67 +464,68 @@ window.calendarApp = (function () {
     }
 
     function setupGlobalModalHandlers() {
-        // Закрытие по Esc
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeAllModals();
-            }
-        });
+    // Закрытие по Esc
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeAllModals();
+        }
+    });
 
-        // Закрытие по клику вне modal-content
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal')) {
-                closeAllModals();
-            }
-        });
-    }
+    // Закрытие по клику вне modal-content
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal')) {
+            closeAllModals();
+        }
+    });
+}
 
     function closeAllModals() {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.style.display = 'none';
-        });
-    }
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.style.display = 'none';
+    });
+}
 
     // Инициализация
     function init() {
-    // Переключение видимости кастомного диапазона
-    document.getElementById('toggleCustomRange')?.addEventListener('click', () => {
-        const inputs = document.getElementById('customRangeInputs');
-        const isVisible = inputs.style.display === 'block';
-        inputs.style.display = isVisible ? 'none' : 'block';
+        setupGlobalModalHandlers();
+        // Переключение видимости кастомного диапазона
+        document.getElementById('toggleCustomRange')?.addEventListener('click', () => {
+            const inputs = document.getElementById('customRangeInputs');
+            const isVisible = inputs.style.display === 'block';
+            inputs.style.display = isVisible ? 'none' : 'block';
 
-        // Меняем текст кнопки для ясности (опционально)
-        const btn = document.getElementById('toggleCustomRange');
-        btn.textContent = isVisible ? 'Другое…' : 'Скрыть';
-    });
-
-    // Применение диапазона
-    document.getElementById('applyRange')?.addEventListener('click', () => {
-        window.calendarApp.customRange();
-    });
-    // Кнопки периода
-    document.querySelectorAll('[data-period]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            setPeriod(e.target.getAttribute('data-period'));
+            // Меняем текст кнопки для ясности (опционально)
+            const btn = document.getElementById('toggleCustomRange');
+            btn.textContent = isVisible ? 'Другое…' : 'Скрыть';
         });
-    });
 
-    // Кнопка диапазона
-    document.getElementById('applyRange')?.addEventListener('click', customRange);
+        // Применение диапазона
+        document.getElementById('applyRange')?.addEventListener('click', () => {
+            window.calendarApp.customRange();
+        });
+        // Кнопки периода
+        document.querySelectorAll('[data-period]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                setPeriod(e.target.getAttribute('data-period'));
+            });
+        });
 
-    // Кнопка переключения режима отображения дней
-    document.getElementById('toggleView')?.addEventListener('click', () => {
-        useCompactView = !useCompactView;
-        document.getElementById('toggleView').textContent =
-            useCompactView ? 'Список задач в днях' : 'Кружки приоритетов';
-        renderCalendar();
-    });
+        // Кнопка диапазона
+        document.getElementById('applyRange')?.addEventListener('click', customRange);
 
-    // Загружаем модальные окна
-    loadModals().then(() => {
-        setPeriod('week');
-    });
-}
+        // Кнопка переключения режима отображения дней
+        document.getElementById('toggleView')?.addEventListener('click', () => {
+            useCompactView = !useCompactView;
+            document.getElementById('toggleView').textContent =
+                useCompactView ? 'Список задач в днях' : 'Кружки приоритетов';
+            renderCalendar();
+        });
+
+        // Загружаем модальные окна
+        loadModals().then(() => {
+            setPeriod('week');
+        });
+    }
 
     return { init, setPeriod, customRange, closeModal };
 })();
