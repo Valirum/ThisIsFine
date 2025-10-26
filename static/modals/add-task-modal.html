@@ -1,0 +1,31 @@
+<div id="addTaskModal" class="modal">
+  <div class="modal-content">
+    <span class="close" data-modal="addTaskModal">&times;</span>
+    <h3>Создать новую задачу</h3>
+    <form id="createTaskForm">
+      <input type="hidden" id="taskDate"> <!-- дата, на которую создаётся задача -->
+
+      <label>Заголовок:<br><input type="text" id="newTaskTitle" required></label><br><br>
+
+      <label>Описание:<br><textarea id="newTaskNote" rows="2"></textarea></label><br><br>
+
+      <label>Срок выполнения (due_at):<br>
+          <div id="addTaskDatetimePicker"></div>
+        </label><br><br>
+
+      <label>Приоритет:<br>
+        <select id="newTaskPriority">
+          <option value="routine">routine</option>
+          <option value="high">high</option>
+          <option value="critical">critical</option>
+        </select>
+      </label><br><br>
+
+      <label>Теги (через запятую):<br>
+        <input type="text" id="newTaskTags" placeholder="работа, срочно">
+      </label><br><br>
+
+      <button type="submit">Создать</button>
+    </form>
+  </div>
+</div>

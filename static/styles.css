@@ -1,0 +1,79 @@
+body {
+    font-family: monospace;
+    background: #0f0f1a;
+    color: #e0e0ff;
+    margin: 0;
+    padding: 1rem;
+}
+
+.controls {
+    margin: 1rem 0;
+}
+
+.calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-top: 1rem;
+}
+
+.day {
+    border: 1px solid #333;
+    padding: 0.5rem;
+    min-height: 80px;
+    background: #1a1a2e;
+}
+
+.day.has-tasks {
+    background: #2a2a4e;
+    cursor: pointer;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 100;
+}
+
+.modal-content {
+    background: #16213e;
+    margin: 5% auto;
+    padding: 2rem;
+    width: 90%;
+    max-width: 600px;
+    border: 1px solid #4a4a8a;
+}
+
+.close {
+    float: right;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.task-item {
+    border-bottom: 1px solid #333;
+    padding: 0.5rem 0;
+    cursor: pointer;
+}
+
+.month-header {
+    text-align: center;
+    border-radius: 4px;
+}
+
+h1 {
+    text-align: center;
+}
+
+select {
+    background: #1a1a2e;
+    color: #e0e0ff;
+    border: 1px solid #4a4a8a;
+    padding: 0.25rem;
+    border-radius: 3px;
+}

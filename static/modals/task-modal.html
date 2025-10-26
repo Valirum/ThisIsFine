@@ -1,0 +1,22 @@
+<div id="taskModal" class="modal">
+  <div class="modal-content">
+    <span class="close" data-modal="taskModal">&times;</span>
+    <h3>Редактировать задачу</h3>
+    <form id="editTaskForm">
+      <input type="hidden" id="taskId">
+      <label>Заголовок:<br><input type="text" id="taskTitle" required></label><br><br>
+      <label>Описание:<br><textarea id="taskNote" rows="3"></textarea></label><br><br>
+      <label>Срок выполнения (due_at):<br>
+        <div id="editTaskDatetimePicker"></div>
+      </label><br><br>
+      <label>Приоритет:<br>
+        <select id="taskPriority">
+          <option value="routine">routine</option>
+          <option value="high">high</option>
+          <option value="critical">critical</option>
+        </select>
+      </label><br><br>
+      <button type="submit">Сохранить</button>
+    </form>
+  </div>
+</div>

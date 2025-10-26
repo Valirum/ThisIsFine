@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>🜂 Календарь Священных Обязанностей 🜂</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+</head>
+<body>
+  <h1>🜂 Календарь Священных Обязанностей 🜂</h1>
+
+  <div class="controls">
+    <button data-period="week">Неделя</button>
+    <button data-period="month">Месяц</button>
+    <button data-period="year">Год</button>
+    <br><br>
+    С: <input type="date" id="start">
+    По: <input type="date" id="end">
+    <button id="applyRange">Применить</button>
+  </div>
+
+  <div id="calendar" class="calendar"></div>
+  <!-- Модальные окна будут вставлены сюда скриптом -->
+
+  <script src="/static/calendar.js"></script>
+</body>
+</html>
