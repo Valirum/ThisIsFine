@@ -348,7 +348,14 @@ window.calendarApp = (function () {
 
                     sortedTasks.forEach(task => {
                         const taskLine = document.createElement('div');
-                        taskLine.textContent = task.title;
+                        // Ограничиваем длину заголовка (например, 24 символа)
+                        const MAX_TITLE_LENGTH = 24;
+                        let displayTitle = task.title;
+                        if (task.title.length > MAX_TITLE_LENGTH) {
+                            displayTitle = task.title.substring(0, MAX_TITLE_LENGTH - 1).trim() + '…';
+                        }
+                        taskLine.textContent = displayTitle;
+                        taskLine.title = task.title; // полный заголовок — в tooltip
                         taskLine.style.fontSize = '0.75em';
                         taskLine.style.padding = '0.15rem 0.25rem';
                         taskLine.style.borderRadius = '2px';
