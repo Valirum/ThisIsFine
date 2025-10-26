@@ -23,7 +23,7 @@
 
 1. **Клонируйте репозиторий**
    ```bash
-   git clone https://github.com/ваш-ник/ThisIsFine.git
+   git clone https://github.com/Valirum/ThisIsFine.git
    cd ThisIsFine
    ```
 
