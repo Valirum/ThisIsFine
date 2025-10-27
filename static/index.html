@@ -2,24 +2,38 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>🜂 Календарь Священных Обязанностей 🜂</title>
+  <title>🜂 Календарь Обязанностей 🜂</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 </head>
 <body>
-  <h1>🜂 Календарь Священных Обязанностей 🜂</h1>
-  <button class="btn" id="toggleView" style="float: right;">Список задач в днях</button>
+  <div class="header">
+    <h1>🜂 Календарь Обязанностей 🜂</h1>
+    <div class="view-toggle">
+      <label class="toggle-switch">
+        <input type="checkbox" id="viewModeToggle">
+        <span class="slider"></span>
+        <span class="mode-label list">Список</span>
+        <span class="mode-label compact">Кружки</span>
+      </label>
+    </div>
+  </div>
+  <br>
   <div class="controls">
-    <button class="btn" data-period="week">Неделя</button>
-    <button class="btn" data-period="month">Месяц</button>
-    <button class="btn" data-period="year">Год</button>
-    <button class="btn" id="toggleCustomRange">Другое…</button>
+    <div class="period-buttons">
+      <button class="btn" data-period="week">Неделя</button>
+      <button class="btn" data-period="month">Месяц</button>
+      <button class="btn" data-period="year">Год</button>
+      <button class="btn" id="toggleCustomRange">Другое…</button>
+    </div>
 
-    <div id="customRangeInputs" style="display: none; margin-top: 0.75rem;">
-      С: <input type="date" id="start">
-      По: <input type="date" id="end">
-      <button class="btn" id="applyRange">Применить</button>
+    <div id="customRangeInputs" class="custom-range" style="display: none;">
+      <div class="date-inputs">
+        <label>С: <input type="date" id="start"></label>
+        <label>По: <input type="date" id="end"></label>
+      </div>
+      <button class="btn apply-btn" id="applyRange">Применить</button>
     </div>
   </div>
 

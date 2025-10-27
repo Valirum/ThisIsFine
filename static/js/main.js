@@ -107,11 +107,19 @@ function setupGlobalHandlers() {
     });
     document.getElementById('applyRange')?.addEventListener('click', applyCustomRange);
 
+    // В main.js → setupGlobalHandlers()
+    const viewToggle = document.getElementById('viewModeToggle');
     const savedView = JSON.parse(localStorage.getItem('calendarCompactView') ?? 'true');
-    setViewMode(savedView);
-    document.getElementById('toggleView')?.addEventListener('click', toggleViewMode);
-    document.getElementById('toggleView').textContent =
-        savedView ? 'Список задач в днях' : 'Кружки приоритетов';
+
+    // Устанавливаем начальное состояние свитчера
+    viewToggle.checked = savedView; // checked = список (не compact)
+
+    viewToggle.addEventListener('change', () => {
+        const isCompact = !viewToggle.checked;
+        localStorage.setItem('calendarCompactView', isCompact);
+        setViewMode(isCompact);
+        renderCalendar();
+    });
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {

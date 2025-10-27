@@ -143,3 +143,283 @@ select {
     color: #ff9999;
 }
 
+/* Адаптивная панель управления */
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1rem 0;
+}
+
+.period-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.period-buttons .btn {
+    flex: 1 1 120px; /* Минимум 120px, растягивается */
+    min-width: 0; /* Важно для flex */
+}
+
+.custom-range {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+}
+
+.date-inputs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.date-inputs label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.9em;
+    color: #c0c0ff;
+}
+
+.date-inputs input {
+    width: auto;
+    padding: 0.3rem;
+    font-size: 0.95em;
+}
+
+.apply-btn {
+    align-self: flex-end;
+    margin-top: 0.25rem;
+}
+
+/* Для очень узких экранов */
+@media (max-width: 360px) {
+    .period-buttons .btn {
+        flex: 1 1 100%; /* Кнопки в один столбец */
+    }
+
+    .date-inputs {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .date-inputs input {
+        width: 100%;
+    }
+}
+
+/* Адаптивный календарь */
+.calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-top: 1rem;
+}
+
+/* Заголовки месяцев */
+.month-header {
+    text-align: center;
+    background: #252540;
+    padding: 0.4rem;
+    margin-top: 0.8rem;
+    font-weight: bold;
+    font-size: clamp(1em, 3vw, 1.2em); /* Адаптивный заголовок месяца */
+}
+
+/* Дни календаря */
+.day {
+    border: 1px solid #333;
+    background: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    padding: 0.2rem;
+    min-height: 50px; /* Уменьшено для мобильных */
+    gap: 0.1rem;
+    font-size: clamp(0.7em, 2.2vw, 0.85em); /* Адаптивный размер дня */
+}
+
+.day .day-number {
+    text-align: right;
+    font-weight: bold;
+    color: #aaa;
+}
+
+/* Для маленьких экранов */
+@media (max-width: 480px) {
+    .calendar {
+        gap: 1px;
+    }
+
+    .day {
+        min-height: 45px;
+        padding: 0.15rem;
+    }
+
+    .day .day-number {
+        font-size: 0.75em;
+    }
+}
+
+/* Адаптивные модальные окна */
+.modal-content {
+    width: 95%;
+    max-width: 500px;
+    padding: 1.2rem;
+    margin: 10vh auto;
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        padding: 1rem;
+        margin: 5vh auto;
+    }
+
+    .modal-content h3 {
+        font-size: 1.1em;
+    }
+
+    form label {
+        font-size: 0.9em;
+    }
+
+    .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9em;
+    }
+}
+
+/* === Динамический свитчер с перемещающимся текстом === */
+.view-toggle {
+  display: flex;
+  align-items: center;
+  height: 36px;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 90px;
+  height: 26px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #2a2a4e;
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background: #8a8aff;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+/* === Надписи === */
+.mode-label {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.98em;
+  font-family: monospace;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  opacity: 0.7;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.mode-label.compact {
+  right: 8px; /* Положение для "Кружки" */
+  color: #8a8aff;
+}
+
+.mode-label.list {
+  opacity: 0;
+  left: 8px; /* Положение для "Список" */
+  color: #aaa;
+}
+
+/* Когда включён режим "Список" */
+.toggle-switch input:checked + .slider {
+  background: #1a1a2e;
+}
+
+.toggle-switch input:checked + .slider:before {
+  transform: translateX(64px);
+}
+
+.toggle-switch input:checked ~ .mode-label.compact {
+  opacity: 0;
+  color: #aaa;
+}
+
+.toggle-switch input:checked ~ .mode-label.list {
+  opacity: 1;
+  color: #8a8aff;
+}
+
+/* === Заголовок — относительный контекст для абсолютного позиционирования === */
+.header {
+  position: relative;
+  text-align: center;       /* ← центрируем содержимое */
+  margin: 1rem 0;
+  padding: 0 100px 0 100px;     /* ← резервируем место СПРАВА под свитчер */
+  min-height: 36px;         /* ← гарантируем высоту для свитчера */
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(1.4em, 4vw, 2em);
+  line-height: 1.2;
+}
+
+/* === Свитчер — абсолютно позиционированный в правом верхнем углу === */
+.view-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+/* === Стили свитчера (ваши, без изменений) === */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 90px;
+  height: 26px;
+}
+
+@media (max-width: 600px) {
+  .header {
+    padding-right: 0;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .view-toggle {
+    position: static; /* возвращаем в поток */
+    margin-top: 0.5rem;
+    align-self: flex-end;
+  }
+}
