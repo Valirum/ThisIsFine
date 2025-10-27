@@ -86,7 +86,7 @@ export async function renderCalendar() {
                     return order[b.priority] - order[a.priority];
                 });
 
-                const maxBadges = 4;
+                const maxBadges = 3;
                 const tasksToDisplay = sortedTasks.slice(0, maxBadges);
 
                 const badgeContainer = document.createElement('div');

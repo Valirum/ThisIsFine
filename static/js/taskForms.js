@@ -32,26 +32,6 @@ export function setupFormHandlers(onTaskChange) {
         .filter(s => s !== '');
     }
 
-    // Заполнение формы редактирования данными задачи
-    function populateEditForm(task) {
-      const form = document.getElementById('edit-task-form');
-      form.dataset.taskId = task.id;
-      form.querySelector('[name="task_id"]').value = task.id;
-      form.querySelector('[name="title"]').value = task.title;
-      form.querySelector('[name="note"]').value = task.note || '';
-
-      const d = task.deadlines;
-      form.querySelector('[name="planned_at"]').value = d.planned_at ? new Date(d.planned_at).toLocaleString('sv-SE', { timeZone: 'UTC' }).replace(' ', 'T').slice(0, 16) : '';
-      form.querySelector('[name="due_at"]').value = d.due_at ? new Date(d.due_at).toLocaleString('sv-SE', { timeZone: 'UTC' }).replace(' ', 'T').slice(0, 16) : '';
-      form.querySelector('[name="grace_end"]').value = d.grace_end ? new Date(d.grace_end).toLocaleString('sv-SE', { timeZone: 'UTC' }).replace(' ', 'T').slice(0, 16) : '';
-
-      form.querySelector('[name="duration_seconds"]').value = task.duration_seconds || 0;
-      form.querySelector('[name="priority"]').value = task.priority || 'routine';
-      form.querySelector('[name="recurrence_seconds"]').value = task.recurrence_seconds || 0;
-      form.querySelector('[name="dependencies"]').value = (task.dependencies || []).join(', ');
-      form.querySelector('[name="tags"]').value = (task.tags || []).join(', ');
-    }
-
     // === ОБРАБОТЧИК СОЗДАНИЯ ===
     document.getElementById('createTaskForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -66,6 +46,9 @@ export function setupFormHandlers(onTaskChange) {
       const plannedPicker = getAddPlannedTaskPicker();
       const gracePicker = getAddGraceEndPlannedTaskPicker();
 
+      const plannedEnabled = document.getElementById('addPlannedAtEnabled')?.checked;
+      const graceEnabled = document.getElementById('addGraceEndEnabled')?.checked;
+
       const dueAtIso = duePicker?.getValue?.();
       if (!dueAtIso) {
         alert('Укажите срок выполнения (due_at)');
@@ -77,8 +60,8 @@ export function setupFormHandlers(onTaskChange) {
         note: document.getElementById('newTaskNote')?.value.trim() || null,
         deadlines: {
           due_at: dueAtIso,
-          planned_at: plannedPicker?.getValue?.() || null,
-          grace_end: gracePicker?.getValue?.() || null
+          planned_at: plannedEnabled ? plannedPicker?.getValue?.() : null,
+          grace_end: graceEnabled ? gracePicker?.getValue?.() : null
         },
         duration_seconds: parseInt(document.getElementById('newTaskDuration')?.value) || 0,
         priority: document.getElementById('newTaskPriority')?.value || 'routine',
@@ -86,7 +69,7 @@ export function setupFormHandlers(onTaskChange) {
         dependencies: parseDependencies(document.getElementById('newTaskDependencies')?.value),
         tags: parseTags(document.getElementById('newTaskTags')?.value)
       };
-
+        console.log(data)
       try {
         const res = await fetch('/tasks', {
           method: 'POST',
@@ -127,7 +110,11 @@ export function setupFormHandlers(onTaskChange) {
       const plannedPicker = getEditPlannedTaskPicker();
       const gracePicker = getEditGraceEndPlannedTaskPicker();
 
+      const plannedEnabled = document.getElementById('editPlannedAtEnabled')?.checked;
+      const graceEnabled = document.getElementById('editGraceEndEnabled')?.checked;
+
       const dueAtIso = duePicker?.getValue?.();
+
       if (!dueAtIso) {
         alert('Укажите срок выполнения (due_at)');
         return;
@@ -138,8 +125,8 @@ export function setupFormHandlers(onTaskChange) {
         note: document.getElementById('taskNote')?.value.trim() || null,
         deadlines: {
           due_at: dueAtIso,
-          planned_at: plannedPicker?.getValue?.() || null,
-          grace_end: gracePicker?.getValue?.() || null
+          planned_at: plannedEnabled ? plannedPicker?.getValue?.() : null,
+          grace_end: graceEnabled ? gracePicker?.getValue?.() : null
         },
         duration_seconds: parseInt(document.getElementById('taskDuration')?.value) || 0,
         priority: document.getElementById('taskPriority')?.value || 'routine',
@@ -153,6 +140,7 @@ export function setupFormHandlers(onTaskChange) {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
+
         });
 
         if (res.ok) {
@@ -165,5 +153,23 @@ export function setupFormHandlers(onTaskChange) {
       } catch (err) {
         alert('Сбой сети: ' + err.message);
       }
+    });
+
+    // Для формы создания
+    document.getElementById('addPlannedAtEnabled')?.addEventListener('change', function() {
+      document.getElementById('addPlannedAtDatetimePicker').style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('addGraceEndEnabled')?.addEventListener('change', function() {
+      document.getElementById('addGraceEndDatetimePicker').style.display = this.checked ? 'block' : 'none';
+    });
+
+    // Для формы редактирования
+    document.getElementById('editPlannedAtEnabled')?.addEventListener('change', function() {
+      document.getElementById('editPlannedAtDatetimePicker').style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('editGraceEndEnabled')?.addEventListener('change', function() {
+      document.getElementById('editGraceEndDatetimePicker').style.display = this.checked ? 'block' : 'none';
     });
 }

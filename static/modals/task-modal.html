@@ -7,17 +7,21 @@
       <label>Заголовок:<br><input type="text" id="taskTitle" required></label><br><br>
       <label>Описание:<br><textarea id="taskNote" rows="3"></textarea></label><br><br>
 
-      <label>Планируемое начало (planned_at):<br>
-        <div id="editPlannedAtDatetimePicker"></div>
-      </label><br><br>
-
-      <label>Срок выполнения (due_at):<br>
+      <label>Срок выполнения<br>
         <div id="editTaskDatetimePicker"></div>
       </label><br><br>
 
-      <label>Конец льготного периода (grace_end):<br>
-        <div id="editGraceEndDatetimePicker"></div>
-      </label><br><br>
+      <label>
+        <input type="checkbox" id="editPlannedAtEnabled"> Планируемое начало
+      </label>
+      <div id="editPlannedAtDatetimePicker" style="display: none;"></div>
+      <br><br>
+
+      <label>
+        <input type="checkbox" id="editGraceEndEnabled"> Крайний срок
+      </label>
+      <div id="editGraceEndDatetimePicker" style="display: none;"></div>
+      <br><br>
 
       <label>Продолжительность (сек):<br>
         <input type="number" id="taskDuration" min="0" value="0">

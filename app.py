@@ -169,14 +169,15 @@ def update_task(task_id):
                 return jsonify({"error": "Invalid due_at format"}), 400
 
         for key in ['planned_at', 'grace_end']:
-            if key in deadlines and deadlines[key]:
+            print(key, deadlines[key])
+            if key in deadlines:
                 try:
                     dt = datetime.fromisoformat(deadlines[key].replace('Z', '+00:00'))
                     if dt.tzinfo is None:
                         dt = dt.replace(tzinfo=timezone.utc)
                     setattr(task, key, dt)
-                except ValueError:
-                    pass  # игнорируем некорректные
+                except (ValueError, AttributeError):
+                    setattr(task, key, None)
 
     # Обработка тегов
     if 'tags' in data:

@@ -1,56 +1,68 @@
 <div id="viewTaskModal" class="modal">
   <div class="modal-content">
     <span class="close" data-modal="viewTaskModal">&times;</span>
-    <h3>Задача: <span id="viewTaskTitle"></span></h3>
+    <h3>Задача: <span id="viewTaskTitle">—</span></h3>
 
     <div class="task-details">
+      <!-- ID -->
       <div class="detail-row">
-        <strong>ID:</strong> <span id="viewTaskId"></span>
+        <strong>ID:</strong> <span id="viewTaskId">—</span>
       </div>
 
+      <!-- Приоритет -->
       <div class="detail-row">
         <strong>Приоритет:</strong>
-        <span id="viewTaskPriority" class="priority-badge"></span>
+        <span id="viewTaskPriority" class="priority-badge routine">routine</span>
       </div>
 
+      <!-- Теги -->
       <div class="detail-row">
         <strong>Теги:</strong>
-        <div id="viewTaskTags" class="tags-list"></div>
+        <div id="viewTaskTags" class="tags-list">
+          <span class="tag-item">—</span>
+        </div>
       </div>
 
+      <!-- Срок выполнения (обязательный) -->
       <div class="detail-row">
         <strong>Срок (due_at):</strong>
-        <span id="viewTaskDueAt"></span>
+        <span id="viewTaskDueAt">Конец времён</span>
       </div>
 
-      <div class="detail-row" id="viewTaskPlannedAtRow" style="display: none;">
+      <!-- Планируемое начало -->
+      <div class="detail-row" id="viewTaskPlannedAtRow">
         <strong>Запланировано:</strong>
-        <span id="viewTaskPlannedAt"></span>
+        <span id="viewTaskPlannedAt">Не запланировано</span>
       </div>
 
-      <div class="detail-row" id="viewTaskGraceEndRow" style="display: none;">
+      <!-- Конец -->
+      <div class="detail-row" id="viewTaskGraceEndRow">
         <strong>Последний шанс (grace_end):</strong>
-        <span id="viewTaskGraceEnd"></span>
+        <span id="viewTaskGraceEnd">Нет льготы</span>
       </div>
 
+      <!-- Длительность -->
       <div class="detail-row">
         <strong>Ожидаемая длительность:</strong>
-        <span id="viewTaskDuration"></span>
+        <span id="viewTaskDuration">Не указана</span>
       </div>
 
+      <!-- Повторение -->
       <div class="detail-row">
         <strong>Повторение:</strong>
-        <span id="viewTaskRecurrence"></span>
+        <span id="viewTaskRecurrence">Нет</span>
       </div>
 
-      <div class="detail-row" id="viewTaskDependenciesRow" style="display: none;">
+      <!-- Зависимости -->
+      <div class="detail-row" id="viewTaskDependenciesRow">
         <strong>Зависимости:</strong>
-        <div id="viewTaskDependencies"></div>
+        <div id="viewTaskDependencies">Нет</div>
       </div>
 
-      <div class="detail-row" id="viewTaskNoteRow" style="display: none;">
+      <!-- Описание -->
+      <div class="detail-row" id="viewTaskNoteRow">
         <strong>Описание:</strong>
-        <pre id="viewTaskNote" class="task-note"></pre>
+        <pre id="viewTaskNote" class="task-note">—</pre>
       </div>
     </div>
 

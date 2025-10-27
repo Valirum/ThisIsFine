@@ -9,17 +9,21 @@
 
       <label>Описание:<br><textarea id="newTaskNote" rows="2"></textarea></label><br><br>
 
-      <label>Планируемое начало (planned_at):<br>
-        <div id="addPlannedAtDatetimePicker"></div>
-      </label><br><br>
-
-      <label>Срок выполнения (due_at):<br>
+      <label>Срок выполнения<br>
         <div id="addTaskDatetimePicker"></div>
       </label><br><br>
 
-      <label>Конец льготного периода (grace_end):<br>
-        <div id="addGraceEndDatetimePicker"></div>
-      </label><br><br>
+      <label>
+        <input type="checkbox" id="addPlannedAtEnabled"> Планируемое начало
+      </label>
+      <div id="addPlannedAtDatetimePicker" style="display: none;"></div>
+      <br><br>
+
+      <label>
+        <input type="checkbox" id="addGraceEndEnabled"> Крайний срок
+      </label>
+      <div id="addGraceEndDatetimePicker" style="display: none;"></div>
+      <br><br>
 
       <label>Продолжительность (сек):<br>
         <input type="number" id="newTaskDuration" min="0" value="0">

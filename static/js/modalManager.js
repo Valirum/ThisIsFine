@@ -85,17 +85,17 @@ export function getEditTaskPicker() {
 }
 
 export function getAddPlannedTaskPicker() {
-    return addPlannedAtDatetimePicker;
+    return addTaskPlannedPickerInstance;
 }
 
 export function getEditPlannedTaskPicker() {
-    return editPlannedAtDatetimePicker;
+    return editTaskPlannedPickerInstance;
 }
 
 export function getAddGraceEndPlannedTaskPicker() {
-    return addGraceEndDatetimePicker
+    return addTaskGraceEndPickerInstance;
 }
 
 export function getEditGraceEndPlannedTaskPicker() {
-    return editGraceEndDatetimePicker;
+    return editTaskGraceEndPickerInstance;
 }
