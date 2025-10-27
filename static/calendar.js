@@ -360,7 +360,25 @@ window.calendarApp = (function () {
                         taskLine.style.padding = '0.15rem 0.25rem';
                         taskLine.style.borderRadius = '2px';
                         taskLine.style.color = '#ffffff';
-                        taskLine.style.backgroundColor = PRIORITY_COLORS[task.priority] || '#666';
+                        // taskLine.style.backgroundColor = PRIORITY_COLORS[task.priority] || '#666';
+
+                        // Приглушённые фоны, коррелирующие с приоритетом
+                        const SOFT_BACKGROUNDS = {
+                            routine: '#2a2a2a',
+                            high: '#3a2e1f',      // тёмно-охристый
+                            critical: '#3a1f1f'   // тёмно-бордовый
+                        };
+
+                        const bgColor = SOFT_BACKGROUNDS[task.priority] || '#2a2a2a';
+                        taskLine.style.backgroundColor = bgColor;
+                        taskLine.style.color = '#e0e0ff';           // светлый текст
+
+                        // Яркая рамка слева (или вокруг) — по приоритету
+                        const borderColor = PRIORITY_COLORS[task.priority] || '#666';
+                        taskLine.style.borderLeft = `3px solid ${borderColor}`; // акцент слева
+                        // ИЛИ, если предпочитаете полную рамку:
+                        // taskLine.style.border = `1px solid ${borderColor}`;
+
                         taskLine.style.whiteSpace = 'nowrap';
                         taskLine.style.overflow = 'hidden';
                         taskLine.style.textOverflow = 'ellipsis';
