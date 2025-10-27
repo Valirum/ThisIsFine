@@ -2,7 +2,11 @@
 import { DateTimePicker } from './DateTimePicker.js';
 
 let addTaskPickerInstance;
+let addTaskPlannedPickerInstance;
+let addTaskGraceEndPickerInstance;
 let editTaskPickerInstance;
+let editTaskPlannedPickerInstance;
+let editTaskGraceEndPickerInstance;
 
 export async function loadModals() {
     const templates = [
@@ -20,15 +24,22 @@ export async function loadModals() {
     modalsContainer.innerHTML = htmls.join('');
     document.body.appendChild(modalsContainer);
 
-    // Инициализация виджетов ПОСЛЕ вставки HTML
+    // Для модалки создания
+    addTaskPlannedPickerInstance = new DateTimePicker('addPlannedAtDatetimePicker');
     addTaskPickerInstance = new DateTimePicker('addTaskDatetimePicker');
+    addTaskGraceEndPickerInstance = new DateTimePicker('addGraceEndDatetimePicker');
+
+      // Для модалки редактирования
+    editTaskPlannedPickerInstance = new DateTimePicker('editPlannedAtDatetimePicker');
     editTaskPickerInstance = new DateTimePicker('editTaskDatetimePicker');
+    editTaskGraceEndPickerInstance = new DateTimePicker('editGraceEndDatetimePicker');
 
     setupModalHandlers();
     setupGlobalModalHandlers();
 
     return { addTaskPicker: addTaskPickerInstance, editTaskPicker: editTaskPickerInstance };
 }
+
 
 function setupModalHandlers() {
     document.querySelectorAll('.close').forEach(el => {
@@ -71,4 +82,20 @@ export function getAddTaskPicker() {
 
 export function getEditTaskPicker() {
     return editTaskPickerInstance;
+}
+
+export function getAddPlannedTaskPicker() {
+    return addPlannedAtDatetimePicker;
+}
+
+export function getEditPlannedTaskPicker() {
+    return editPlannedAtDatetimePicker;
+}
+
+export function getAddGraceEndPlannedTaskPicker() {
+    return addGraceEndDatetimePicker
+}
+
+export function getEditGraceEndPlannedTaskPicker() {
+    return editGraceEndDatetimePicker;
 }

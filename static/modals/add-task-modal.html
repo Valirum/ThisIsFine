@@ -9,9 +9,33 @@
 
       <label>Описание:<br><textarea id="newTaskNote" rows="2"></textarea></label><br><br>
 
+      <label>Планируемое начало (planned_at):<br>
+        <div id="addPlannedAtDatetimePicker"></div>
+      </label><br><br>
+
       <label>Срок выполнения (due_at):<br>
-          <div id="addTaskDatetimePicker"></div>
-        </label><br><br>
+        <div id="addTaskDatetimePicker"></div>
+      </label><br><br>
+
+      <label>Конец льготного периода (grace_end):<br>
+        <div id="addGraceEndDatetimePicker"></div>
+      </label><br><br>
+
+      <label>Продолжительность (сек):<br>
+        <input type="number" id="newTaskDuration" min="0" value="0">
+      </label><br><br>
+
+      <label>Повторение (сек, 0 = нет):<br>
+        <input type="number" id="newTaskRecurrence" min="0" value="0">
+      </label><br><br>
+
+      <label>Зависимости (ID задач через запятую):<br>
+        <input type="text" id="newTaskDependencies" placeholder="1,5,12">
+      </label><br><br>
+
+      <label>Теги (через запятую):<br>
+        <input type="text" id="newTaskTags" placeholder="работа, срочно">
+      </label><br><br>
 
       <label>Приоритет:<br>
         <select id="newTaskPriority">
@@ -19,10 +43,6 @@
           <option value="high">high</option>
           <option value="critical">critical</option>
         </select>
-      </label><br><br>
-
-      <label>Теги (через запятую):<br>
-        <input type="text" id="newTaskTags" placeholder="работа, срочно">
       </label><br><br>
 
       <button class="btn btn--primary" type="submit">Создать</button>

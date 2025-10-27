@@ -43,13 +43,44 @@ body {
     z-index: 100;
 }
 
+/* === Адаптивные модальные окна с прокруткой === */
 .modal-content {
-    background: #16213e;
-    margin: 5% auto;
-    padding: 2rem;
-    width: 90%;
-    max-width: 600px;
-    border: 1px solid #4a4a8a;
+  background: #16213e;
+  margin: 5% auto;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 600px;
+  max-height: 85vh; /* ← ограничиваем высоту */
+  overflow-y: auto; /* ← добавляем вертикальную прокрутку */
+  border: 1px solid #4a4a8a;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box; /* ← чтобы padding не увеличивал размер */
+}
+
+/* Для малых экранов — ещё больше места */
+@media (max-width: 480px) {
+  .modal-content {
+    width: 95%;
+    max-width: 500px;
+    max-height: 80vh;
+    padding: 1rem;
+    margin: 8vh auto;
+  }
+
+  .modal-content h3 {
+    font-size: 1.1em;
+    margin-top: 0;
+  }
+
+  form label {
+    font-size: 0.9em;
+  }
+
+  .btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9em;
+  }
 }
 
 .close {

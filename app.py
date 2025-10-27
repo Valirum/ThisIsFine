@@ -92,6 +92,7 @@ def create_task():
 
     db.session.add(task)
     db.session.commit()
+    print(task, "added")
     return jsonify(task.to_dict()), 201
 
 
@@ -143,21 +144,56 @@ def update_task(task_id):
     task = Task.query.get_or_404(task_id)
     data = request.get_json()
 
-    if 'title' in data:
-        task.title = data['title']
-    if 'note' in data:
-        task.note = data.get('note')
-    if 'priority' in data:
-        task.priority = data['priority']
+    # Обновление скалярных полей
+    for field in ['title', 'note', 'priority']:
+        if field in data:
+            setattr(task, field, data[field])
 
-    if 'deadlines' in data and 'due_at' in data['deadlines']:
-        try:
-            due_at = datetime.fromisoformat(data['deadlines']['due_at'].replace('Z', '+00:00'))
-            if due_at.tzinfo is None:
-                due_at = due_at.replace(tzinfo=timezone.utc)
-            task.due_at = due_at
-        except ValueError:
-            return jsonify({"error": "Invalid due_at format"}), 400
+    for field in ['duration_seconds', 'recurrence_seconds']:
+        if field in data:
+            setattr(task, field, int(data.get(field, 0)))
+
+    if 'dependencies' in data:
+        task.dependencies = data.get('dependencies', [])
+
+    # Обработка deadlines
+    if 'deadlines' in data:
+        deadlines = data['deadlines']
+        if 'due_at' in deadlines:
+            try:
+                due_at = datetime.fromisoformat(deadlines['due_at'].replace('Z', '+00:00'))
+                if due_at.tzinfo is None:
+                    due_at = due_at.replace(tzinfo=timezone.utc)
+                task.due_at = due_at
+            except ValueError:
+                return jsonify({"error": "Invalid due_at format"}), 400
+
+        for key in ['planned_at', 'grace_end']:
+            if key in deadlines and deadlines[key]:
+                try:
+                    dt = datetime.fromisoformat(deadlines[key].replace('Z', '+00:00'))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    setattr(task, key, dt)
+                except ValueError:
+                    pass  # игнорируем некорректные
+
+    # Обработка тегов
+    if 'tags' in data:
+        tag_names = data.get('tags', [])
+        if not isinstance(tag_names, list):
+            tag_names = []
+        tags = []
+        for name in tag_names:
+            name = name.strip().lower()
+            if not name:
+                continue
+            tag = Tag.query.filter_by(name=name).first()
+            if not tag:
+                tag = Tag(name=name)
+                db.session.add(tag)
+            tags.append(tag)
+        task.tags = tags
 
     db.session.commit()
     return jsonify(task.to_dict()), 200

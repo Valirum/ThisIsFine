@@ -23,8 +23,11 @@ export async function renderCalendar() {
 
     calendarEl.innerHTML = '';
 
-    const startIso = currentStart.toISOString().split('T')[0];
-    const endIso = currentEnd.toISOString().split('T')[0];
+    const startIso = currentStart.toISOString();
+    let endIso = currentEnd.toISOString();
+    if (endIso.split('T')[1] == "00:00:00.000Z"){
+        endIso = endIso.split('T')[0]+"T23:59:59.999Z";}
+    console.log(currentStart.toISOString(), currentEnd.toISOString(), startIso, endIso)
     const res = await fetch(`/tasks?due_from=${startIso}&due_to=${endIso}`);
     const tasks = await res.json();
 

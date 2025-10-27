@@ -8,19 +8,33 @@ let currentViewedTask = null;
 
 function setPeriod(period) {
     const now = new Date();
+
     if (period === 'week') {
-        const day = now.getDay();
-        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-        currentStart = new Date(now.getFullYear(), now.getMonth(), diff);
-        currentEnd = new Date(currentStart);
-        currentEnd.setDate(currentEnd.getDate() + 6);
-    } else if (period === 'month') {
-        currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    } else if (period === 'year') {
-        currentStart = new Date(now.getFullYear(), 0, 1);
-        currentEnd = new Date(now.getFullYear(), 11, 31);
+        // Получаем начало недели (понедельник) в UTC
+        const utcDay = now.getUTCDay(); // 0 = воскресенье, 1 = понедельник, ..., 6 = суббота
+        const utcDate = now.getUTCDate();
+        const utcMonth = now.getUTCMonth();
+        const utcYear = now.getUTCFullYear();
+
+        // Смещение до понедельника (если воскресенье — день 0, то сдвиг на -6)
+        const daysToMonday = utcDay === 0 ? -6 : 1 - utcDay;
+        const startUTCDate = utcDate + daysToMonday;
+
+        currentStart = new Date(Date.UTC(utcYear, utcMonth, startUTCDate));
+        currentEnd = new Date(Date.UTC(utcYear, utcMonth, startUTCDate + 6));
     }
+    else if (period === 'month') {
+        const year = now.getUTCFullYear();
+        const month = now.getUTCMonth();
+        currentStart = new Date(Date.UTC(year, month, 1));
+        currentEnd = new Date(Date.UTC(year, month + 1, 0)); // последний день месяца
+    }
+    else if (period === 'year') {
+        const year = now.getUTCFullYear();
+        currentStart = new Date(Date.UTC(year, 0, 1));
+        currentEnd = new Date(Date.UTC(year, 11, 31)); // 31 декабря
+    }
+
     setPeriodState(currentStart, currentEnd);
     renderCalendar();
 }
