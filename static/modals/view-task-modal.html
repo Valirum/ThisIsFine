@@ -1,0 +1,61 @@
+<div id="viewTaskModal" class="modal">
+  <div class="modal-content">
+    <span class="close" data-modal="viewTaskModal">&times;</span>
+    <h3>Задача: <span id="viewTaskTitle"></span></h3>
+
+    <div class="task-details">
+      <div class="detail-row">
+        <strong>ID:</strong> <span id="viewTaskId"></span>
+      </div>
+
+      <div class="detail-row">
+        <strong>Приоритет:</strong>
+        <span id="viewTaskPriority" class="priority-badge"></span>
+      </div>
+
+      <div class="detail-row">
+        <strong>Теги:</strong>
+        <div id="viewTaskTags" class="tags-list"></div>
+      </div>
+
+      <div class="detail-row">
+        <strong>Срок (due_at):</strong>
+        <span id="viewTaskDueAt"></span>
+      </div>
+
+      <div class="detail-row" id="viewTaskPlannedAtRow" style="display: none;">
+        <strong>Запланировано:</strong>
+        <span id="viewTaskPlannedAt"></span>
+      </div>
+
+      <div class="detail-row" id="viewTaskGraceEndRow" style="display: none;">
+        <strong>Последний шанс (grace_end):</strong>
+        <span id="viewTaskGraceEnd"></span>
+      </div>
+
+      <div class="detail-row">
+        <strong>Ожидаемая длительность:</strong>
+        <span id="viewTaskDuration"></span>
+      </div>
+
+      <div class="detail-row">
+        <strong>Повторение:</strong>
+        <span id="viewTaskRecurrence"></span>
+      </div>
+
+      <div class="detail-row" id="viewTaskDependenciesRow" style="display: none;">
+        <strong>Зависимости:</strong>
+        <div id="viewTaskDependencies"></div>
+      </div>
+
+      <div class="detail-row" id="viewTaskNoteRow" style="display: none;">
+        <strong>Описание:</strong>
+        <pre id="viewTaskNote" class="task-note"></pre>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" id="editTaskBtn">Редактировать</button>
+    </div>
+  </div>
+</div>

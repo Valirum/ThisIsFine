@@ -8,7 +8,8 @@ export async function loadModals() {
     const templates = [
         '/static/modals/day-modal.html',
         '/static/modals/task-modal.html',
-        '/static/modals/add-task-modal.html'
+        '/static/modals/add-task-modal.html',
+        '/static/modals/view-task-modal.html'
     ];
 
     const responses = await Promise.all(templates.map(url => fetch(url)));

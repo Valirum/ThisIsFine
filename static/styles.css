@@ -385,7 +385,7 @@ select {
   position: relative;
   text-align: center;       /* ← центрируем содержимое */
   margin: 1rem 0;
-  padding: 0 100px 0 100px;     /* ← резервируем место СПРАВА под свитчер */
+  padding: 0 100px 0 100px;     /* ← резервируем место СПРАВА под свитчер и слева для симметрии*/
   min-height: 36px;         /* ← гарантируем высоту для свитчера */
 }
 
@@ -412,14 +412,81 @@ select {
 
 @media (max-width: 600px) {
   .header {
-    padding-right: 0;
+    padding: 0 0 0 0;
     flex-direction: column;
     align-items: flex-start;
   }
 
   .view-toggle {
-    position: static; /* возвращаем в поток */
-    margin-top: 0.5rem;
-    align-self: flex-end;
+    display: none;
+  }
+}
+
+/* === Форма просмотра задачи === */
+.task-details {
+  margin: 1.2rem 0;
+  line-height: 1.6;
+}
+
+.detail-row {
+  margin-bottom: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.detail-row strong {
+  min-width: 180px;
+  color: #8a8aff;
+}
+
+.task-note {
+  background: #1a1a2e;
+  padding: 0.6rem;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  margin-top: 0.4rem;
+  overflow-x: auto;
+}
+
+.priority-badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.85em;
+}
+
+.priority-badge.routine { background: #2a2a2a; color: #aaa; }
+.priority-badge.high { background: #3a2e1f; color: #ffcc80; }
+.priority-badge.critical { background: #3a1f1f; color: #ff8a8a; }
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+
+.tag-item {
+  background: #252540;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+  border: 1px solid #4a4a8a;
+}
+
+.modal-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Адаптивность */
+@media (max-width: 600px) {
+  .detail-row strong {
+    min-width: 120px;
   }
 }
