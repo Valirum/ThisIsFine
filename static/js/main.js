@@ -1,6 +1,6 @@
 // main.js
 import { renderCalendar, setPeriodState, setViewMode } from './calendarRenderer.js';
-import { setupFormHandlers } from './taskForms.js';
+import { setupFormHandlers, suggestTags } from './taskForms.js';
 import {
    getEditTaskPicker,
    getEditPlannedTaskPicker,
@@ -235,6 +235,58 @@ function showEditTask(task) {
     document.getElementById('taskModal').style.display = 'block';
 }
 
+function showAddTask(date) {
+    const addPicker = getAddTaskPicker();
+    addPicker.setValue(`${date}T12:00:00Z`);
+    document.getElementById('dayModal').style.display = 'none';
+    document.getElementById('addTaskModal').style.display = 'block';
+
+    // После открытия модалки
+    document.getElementById('newTaskTitle')?.addEventListener('input', debounce(updateTagSuggestions, 500));
+    document.getElementById('newTaskNote')?.addEventListener('input', debounce(updateTagSuggestions, 500));
+
+    function updateTagSuggestions() {
+        const title = document.getElementById('newTaskTitle')?.value || '';
+        const note = document.getElementById('newTaskNote')?.value || '';
+        suggestTags(title, note).then(tags => {
+            // Показываем подсказку под полем тегов
+            const suggestionsEl = document.getElementById('tagSuggestions');
+            if (suggestionsEl) {
+                suggestionsEl.innerHTML = tags.length
+                    ? `Предложить: ${tags.map(t => `<a href="#" class="suggested-tag">${t}</a>`).join(', ')}`
+                    : '';
+            }
+        });
+    }
+
+    // Вставляет тег в поле
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('suggested-tag')) {
+            e.preventDefault();
+            const tag = e.target.textContent;
+            const input = document.getElementById('newTaskTags');
+            const current = input.value.split(',').map(s => s.trim()).filter(s => s);
+            if (!current.includes(tag)) {
+                current.push(tag);
+                input.value = current.join(', ');
+            }
+        }
+    });
+
+    // Простой debounce
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+}
+
 function formatDuration(seconds) {
   if (!seconds) return '0 сек';
   const h = Math.floor(seconds / 3600);
@@ -432,10 +484,7 @@ function setupGlobalHandlers() {
 
     document.getElementById('addTaskBtn')?.addEventListener('click', () => {
         if (!window._selectedDate) return;
-        const addPicker = getAddTaskPicker();
-        addPicker.setValue(`${window._selectedDate}T12:00:00Z`);
-        document.getElementById('dayModal').style.display = 'none';
-        document.getElementById('addTaskModal').style.display = 'block';
+        showAddTask(window._selectedDate);
     });
 }
 

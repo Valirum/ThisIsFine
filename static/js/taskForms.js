@@ -176,3 +176,18 @@ export function setupFormHandlers(onTaskChange) {
       document.getElementById('editGraceEndDatetimePicker').style.display = this.checked ? 'block' : 'none';
     });
 }
+
+export async function suggestTags(title, note) {
+    try {
+        const res = await fetch('/suggest-tags', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, note })
+        });
+        const data = await res.json();
+        return data.suggested_tags || [];
+    } catch (err) {
+        console.warn('Не удалось получить подсказки тегов:', err);
+        return [];
+    }
+}

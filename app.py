@@ -5,6 +5,14 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+# === Импорт автоподбора тегов ===
+from tag_suggester import TagSuggester
+import threading
+
+# Глобальный экземпляр (с локом для потокобезопасности)
+suggester_lock = threading.Lock()
+tag_suggester = None
+
 load_dotenv()
 
 # Создаём папку instance, если её нет
@@ -20,9 +28,46 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
-# Создаём таблицы при запуске (для пет-проекта — допустимо)
+# Инициализация предиктора тегов при старте
+def init_tag_suggester():
+    global tag_suggester
+    with app.app_context():
+        # Загружаем ВСЕ задачи из БД как обучающие данные
+        tasks_from_db = Task.query.all()
+        training_data = [
+            {
+                "text": f"{task.title} {task.note or ''}",
+                "tags": [tag.name for tag in task.tags]
+            }
+            for task in tasks_from_db
+            if task.tags  # только задачи с тегами
+        ]
+        tag_suggester = TagSuggester(tasks=training_data)
+
+# Выполняем инициализацию после создания таблиц
 with app.app_context():
     db.create_all()
+    init_tag_suggester()
+
+@app.route('/suggest-tags', methods=['POST'])
+def suggest_tags():
+    """Предлагает теги на основе title + note"""
+    global tag_suggester
+    if tag_suggester is None:
+        return jsonify({"suggested_tags": []}), 200
+
+    data = request.get_json()
+    title = data.get('title', '').strip()
+    note = data.get('note', '').strip()
+    text = f"{title} {note}".strip()
+
+    if not text:
+        return jsonify({"suggested_tags": []}), 200
+
+    with suggester_lock:
+        tags = tag_suggester.suggest_tags(text, top_k_tags=3)
+
+    return jsonify({"suggested_tags": tags}), 200
 
 # Получить все теги (уже есть, но обновим)
 @app.route('/tags', methods=['GET'])
@@ -111,7 +156,27 @@ def create_task():
 
     db.session.add(task)
     db.session.commit()
-    print(task, "added")
+
+    db.session.add(task)
+    db.session.commit()
+
+    # Теперь task.id точно существует
+    task_id = task.id
+    task_title = task.title
+    task_note = task.note or ''
+    task_tag_names = [tag.name for tag in task.tags]  # сохраняем сейчас, чтобы не делать запрос в другом потоке
+
+    # Обновляем модель автоподбора асинхронно
+    def update_suggester():
+        global tag_suggester
+        with app.app_context():
+            if tag_suggester is not None and task_tag_names:
+                text = f"{task_title} {task_note}"
+                with suggester_lock:
+                    tag_suggester.add_task(text, task_tag_names)
+
+    threading.Thread(target=update_suggester, daemon=True).start()
+
     return jsonify(task.to_dict()), 201
 
 
@@ -239,6 +304,21 @@ def update_task(task_id):
         task.tags = tags
 
     db.session.commit()
+
+    # Обновляем модель автоподбора (асинхронно, чтобы не тормозить ответ)
+    def update_suggester():
+        global tag_suggester
+        with app.app_context():
+            task = Task.query.get(task_id)  # для update — используйте task_id
+            if task and task.tags:
+                text = f"{task.title} {task.note or ''}"
+                tags = [tag.name for tag in task.tags]
+                with suggester_lock:
+                    tag_suggester.add_task(text, tags)
+
+    # Запускаем в фоне
+    threading.Thread(target=update_suggester, daemon=True).start()
+
     return jsonify(task.to_dict()), 200
 
 
