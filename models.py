@@ -31,6 +31,7 @@ class Task(db.Model):
     priority = db.Column(db.String(20), nullable=False, default='routine')
     recurrence_seconds = db.Column(db.Integer, nullable=False, default=0)
     dependencies = db.Column(db.JSON, nullable=True, default=list)
+    status = db.Column(db.String(20), nullable=False, default='planned')  # planned | inProgress | done | overdue
 
     # Связь с тегами
     tags = db.relationship(
@@ -54,5 +55,6 @@ class Task(db.Model):
             "tags": [tag.name for tag in self.tags],
             "priority": self.priority,
             "recurrence_seconds": self.recurrence_seconds,
-            "dependencies": self.dependencies or []
+            "dependencies": self.dependencies or [],
+            "status": self.status
         }

@@ -139,16 +139,33 @@ def list_tags():
     return jsonify([{"name": t.name} for t in tags]), 200
 
 
+# УДАЛЕНИЕ задачи
+@app.route('/tasks/<int:task_id>', methods=['DELETE'])
+def delete_task(task_id):
+    task = Task.query.get_or_404(task_id)
+    db.session.delete(task)
+    db.session.commit()
+    return jsonify({"message": "Задача уничтожена во славу Омниссии"}), 200
+
+
+# ОБНОВЛЕНИЕ статуса (или полное обновление)
+# Уже существующий PUT /tasks/<id> расширяем поддержкой status
 @app.route('/tasks/<int:task_id>', methods=['PUT'])
 def update_task(task_id):
     task = Task.query.get_or_404(task_id)
     data = request.get_json()
 
-    # Обновление скалярных полей
-    for field in ['title', 'note', 'priority']:
-        if field in data:
-            setattr(task, field, data[field])
+    # Обновляем все поля, включая status
+    if 'title' in data:
+        task.title = data['title']
+    if 'note' in data:
+        task.note = data.get('note')
+    if 'priority' in data:
+        task.priority = data['priority']
+    if 'status' in data and data['status'] in ['planned', 'inProgress', 'done', 'overdue']:
+        task.status = data['status']
 
+    # Числовые поля
     for field in ['duration_seconds', 'recurrence_seconds']:
         if field in data:
             setattr(task, field, int(data.get(field, 0)))
@@ -156,7 +173,7 @@ def update_task(task_id):
     if 'dependencies' in data:
         task.dependencies = data.get('dependencies', [])
 
-    # Обработка deadlines
+    # Deadlines
     if 'deadlines' in data:
         deadlines = data['deadlines']
         if 'due_at' in deadlines:
@@ -169,17 +186,16 @@ def update_task(task_id):
                 return jsonify({"error": "Invalid due_at format"}), 400
 
         for key in ['planned_at', 'grace_end']:
-            print(key, deadlines[key])
-            if key in deadlines:
+            if key in deadlines and deadlines[key]:
                 try:
                     dt = datetime.fromisoformat(deadlines[key].replace('Z', '+00:00'))
                     if dt.tzinfo is None:
                         dt = dt.replace(tzinfo=timezone.utc)
                     setattr(task, key, dt)
-                except (ValueError, AttributeError):
-                    setattr(task, key, None)
+                except ValueError:
+                    pass
 
-    # Обработка тегов
+    # Теги
     if 'tags' in data:
         tag_names = data.get('tags', [])
         if not isinstance(tag_names, list):

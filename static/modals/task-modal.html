@@ -1,6 +1,7 @@
 <div id="taskModal" class="modal">
   <div class="modal-content">
     <span class="close" data-modal="taskModal">&times;</span>
+
     <h3>Редактировать задачу</h3>
     <form id="editTaskForm">
       <input type="hidden" id="taskId">
@@ -46,6 +47,16 @@
           <option value="critical">critical</option>
         </select>
       </label><br><br>
+
+      <label>Статус:<br>
+        <select id="taskStatus">
+          <option value="planned">Planned</option>
+          <option value="inProgress">In Progress</option>
+          <option value="done">Done</option>
+          <option value="overdue">Overdue</option>
+        </select>
+      </label><br><br>
+
       <button class="btn btn--primary" type="submit">Сохранить</button>
     </form>
   </div>

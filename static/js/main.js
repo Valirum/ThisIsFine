@@ -6,7 +6,17 @@ import { setupFormHandlers } from './taskForms.js';
 let currentStart, currentEnd;
 let currentViewedTask = null;
 
-function setPeriod(period) {
+function setPeriod(period, start = null, end = null) {
+    console.log(period, start, end)
+    localStorage.setItem('calendarPeriod', period);
+    if (period === 'custom') {
+        localStorage.setItem('customPeriodStart', start);
+        localStorage.setItem('customPeriodEnd', end);
+        setPeriodState(start, end);
+        renderCalendar();
+        return;
+    }
+
     const now = new Date();
 
     if (period === 'week') {
@@ -48,6 +58,9 @@ function applyCustomRange() {
     }
     currentStart = new Date(startInput);
     currentEnd = new Date(endInput);
+    localStorage.setItem('customPeriodStart', currentStart.toISOString());
+    localStorage.setItem('customPeriodEnd', currentEnd.toISOString());
+    localStorage.setItem('calendarPeriod', "custom")
     setPeriodState(currentStart, currentEnd);
     renderCalendar();
 }
@@ -101,6 +114,8 @@ function populateEditForm(task) {
       if (prioritySelect) {
         prioritySelect.value = task.priority || 'routine';
       }
+
+      document.getElementById('taskStatus').value = task.status || 'planned';
 
       // Числовые поля
       document.getElementById('taskDuration').value = task.duration_seconds || 0;
@@ -164,7 +179,6 @@ function showEditTask(task) {
     document.getElementById('taskModal').style.display = 'block';
 }
 
-// В main.js
 function formatDuration(seconds) {
   if (!seconds) return '0 сек';
   const h = Math.floor(seconds / 3600);
@@ -189,6 +203,12 @@ function showViewTask(task) {
   const priority = task.priority || 'routine';
   priorityEl.textContent = priority;
   priorityEl.className = `priority-badge ${priority}`;
+
+  // Внутри showViewTask
+    const statusEl = document.getElementById('viewTaskStatus');
+    const status = task.status || 'planned';
+    statusEl.textContent = status;
+    statusEl.className = `priority-badge ${status.toLowerCase()}`;
 
   // Теги
   const tagsEl = document.getElementById('viewTaskTags');
@@ -284,6 +304,40 @@ function setupGlobalHandlers() {
         }
     });
 
+    // Пометить как выполнено
+    document.getElementById('markAsDoneBtn')?.addEventListener('click', async () => {
+      if (!currentViewedTask) return;
+      try {
+        const res = await fetch(`/tasks/${currentViewedTask.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'done' })
+        });
+        if (res.ok) {
+          document.getElementById('viewTaskModal').style.display = 'none';
+          location.reload();
+        }
+      } catch (err) {
+        alert('Ошибка: ' + err.message);
+      }
+    });
+
+    // Удаление
+    document.getElementById('deleteTaskBtn')?.addEventListener('click', async () => {
+      if (!currentViewedTask || !confirm('Уничтожить задачу навсегда?')) return;
+      try {
+        const res = await fetch(`/tasks/${currentViewedTask.id}`, {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          document.getElementById('viewTaskModal').style.display = 'none';
+          location.reload();
+        }
+      } catch (err) {
+        alert('Ошибка удаления: ' + err.message);
+      }
+    });
+
     document.getElementById('toggleCustomRange')?.addEventListener('click', () => {
         const inputs = document.getElementById('customRangeInputs');
         const isVisible = inputs.style.display === 'block';
@@ -297,7 +351,8 @@ function setupGlobalHandlers() {
     const savedView = JSON.parse(localStorage.getItem('calendarCompactView') ?? 'true');
 
     // Устанавливаем начальное состояние свитчера
-    viewToggle.checked = false; // checked = список (не compact)
+    viewToggle.checked = !savedView; // checked = список (не compact)
+    setViewMode(savedView);
 
     viewToggle.addEventListener('change', () => {
         const isCompact = !viewToggle.checked;
@@ -333,7 +388,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadModals();
         setupFormHandlers(() => renderCalendar());
         setupGlobalHandlers();
-        setPeriod('week');
+        // При инициализации:
+        const savedPeriod = localStorage.getItem('calendarPeriod') || 'week';
+        let savedStart = localStorage.getItem('customPeriodStart');
+        let savedEnd = localStorage.getItem('customPeriodEnd');
+
+        // Преобразуем строки в Date (если есть)
+        if (savedStart) savedStart = new Date(savedStart);
+        if (savedEnd) savedEnd = new Date(savedEnd);
+
+        setPeriod(savedPeriod, savedStart, savedEnd);
+
     } catch (err) {
         console.error('Ошибка инициализации календаря:', err);
         alert('Не удалось загрузить интерфейс календаря. См. консоль.');

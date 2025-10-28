@@ -1,7 +1,7 @@
 <div id="viewTaskModal" class="modal">
   <div class="modal-content">
     <span class="close" data-modal="viewTaskModal">&times;</span>
-    <h3>Задача: <span id="viewTaskTitle">—</span></h3>
+    <h3><span id="viewTaskTitle">—</span></h3>
 
     <div class="task-details">
       <!-- ID -->
@@ -15,6 +15,11 @@
         <span id="viewTaskPriority" class="priority-badge routine">routine</span>
       </div>
 
+      <div class="detail-row">
+        <strong>Статус:</strong>
+        <span id="viewTaskStatus" class="priority-badge">planned</span>
+      </div>
+
       <!-- Теги -->
       <div class="detail-row">
         <strong>Теги:</strong>
@@ -25,7 +30,7 @@
 
       <!-- Срок выполнения (обязательный) -->
       <div class="detail-row">
-        <strong>Срок (due_at):</strong>
+        <strong>Срок:</strong>
         <span id="viewTaskDueAt">Конец времён</span>
       </div>
 
@@ -37,7 +42,7 @@
 
       <!-- Конец -->
       <div class="detail-row" id="viewTaskGraceEndRow">
-        <strong>Последний шанс (grace_end):</strong>
+        <strong>Последний шанс:</strong>
         <span id="viewTaskGraceEnd">Нет льготы</span>
       </div>
 
@@ -67,7 +72,11 @@
     </div>
 
     <div class="modal-actions">
-      <button class="btn" id="editTaskBtn">Редактировать</button>
+      <div class="modal-actions__left">
+        <button class="btn btn--small" id="deleteTaskBtn">🗑️</button>
+        <button class="btn btn--small" id="editTaskBtn">✏️</button>
+      </div>
+      <button class="btn" id="markAsDoneBtn">Выполнено ✅</button>
     </div>
   </div>
 </div>

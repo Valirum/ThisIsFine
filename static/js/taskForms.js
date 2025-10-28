@@ -8,6 +8,7 @@ import {
    getEditGraceEndPlannedTaskPicker
  } from './modalManager.js';
 
+
 export function setupFormHandlers(onTaskChange) {
     // Утилиты
     function toISO(localDateTimeStr) {
@@ -67,7 +68,8 @@ export function setupFormHandlers(onTaskChange) {
         priority: document.getElementById('newTaskPriority')?.value || 'routine',
         recurrence_seconds: parseInt(document.getElementById('newTaskRecurrence')?.value) || 0,
         dependencies: parseDependencies(document.getElementById('newTaskDependencies')?.value),
-        tags: parseTags(document.getElementById('newTaskTags')?.value)
+        tags: parseTags(document.getElementById('newTaskTags')?.value),
+        status: document.getElementById('taskStatus')?.value || 'planned'
       };
         console.log(data)
       try {
@@ -132,7 +134,8 @@ export function setupFormHandlers(onTaskChange) {
         priority: document.getElementById('taskPriority')?.value || 'routine',
         recurrence_seconds: parseInt(document.getElementById('taskRecurrence')?.value) || 0,
         dependencies: parseDependencies(document.getElementById('taskDependencies')?.value),
-        tags: parseTags(document.getElementById('taskTags')?.value)
+        tags: parseTags(document.getElementById('taskTags')?.value),
+        status: document.getElementById('taskStatus')?.value || 'planned'
       };
 
       try {

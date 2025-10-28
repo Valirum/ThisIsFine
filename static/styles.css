@@ -1,329 +1,306 @@
+/* === Общие стили === */
+:root {
+  --bg-main: #0f0f1a;
+  --bg-panel: #1a1a2e;
+  --bg-panel-hover: #2a2a4e;
+  --bg-header: #252540;
+  --border-color: #333;
+  --border-accent: #4a4a8a;
+  --text-main: #e0e0ff;
+  --text-muted: #aaa;
+  --text-accent: #8a8aff;
+  --danger: #ff6666;
+  --danger-light: #ff9999;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
-    font-family: monospace;
-    background: #0f0f1a;
-    color: #e0e0ff;
-    margin: 0;
-    padding: 1rem;
-}
-
-.controls {
-    margin: 1rem 0;
-}
-
-.calendar {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    margin-top: 1rem;
-}
-
-.day {
-    border: 1px solid #333;
-    background: #1a1a2e;
-    display: flex;
-    flex-direction: column;
-    padding: 0.25rem;
-    min-height: 60px;
-    gap: 0.15rem;
-}
-
-.day.has-tasks {
-    background: #2a2a4e;
-    cursor: pointer;
-}
-
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 100;
-}
-
-/* === Адаптивные модальные окна с прокруткой === */
-.modal-content {
-  background: #16213e;
-  margin: 5% auto;
-  padding: 1.5rem;
-  width: 90%;
-  max-width: 600px;
-  max-height: 85vh; /* ← ограничиваем высоту */
-  overflow-y: auto; /* ← добавляем вертикальную прокрутку */
-  border: 1px solid #4a4a8a;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box; /* ← чтобы padding не увеличивал размер */
-}
-
-/* Для малых экранов — ещё больше места */
-@media (max-width: 480px) {
-  .modal-content {
-    width: 95%;
-    max-width: 500px;
-    max-height: 80vh;
-    padding: 1rem;
-    margin: 8vh auto;
-  }
-
-  .modal-content h3 {
-    font-size: 1.1em;
-    margin-top: 0;
-  }
-
-  form label {
-    font-size: 0.9em;
-  }
-
-  .btn {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.9em;
-  }
-}
-
-.close {
-    float: right;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.task-item {
-    border-bottom: 1px solid #333;
-    padding: 0.5rem 0;
-    cursor: pointer;
-}
-
-.month-header {
-    text-align: center;
-    border-radius: 4px;
+  font-family: monospace, 'Courier New', monospace;
+  background: var(--bg-main);
+  color: var(--text-main);
+  margin: 0;
+  padding: 1rem;
 }
 
 h1 {
-    text-align: center;
+  text-align: center;
+  margin: 0;
+  font-size: clamp(1.4em, 4vw, 2em);
+  line-height: 1.2;
 }
 
-select {
-    background: #1a1a2e;
-    color: #e0e0ff;
-    border: 1px solid #4a4a8a;
-    padding: 0.25rem;
-    border-radius: 3px;
-}
-
-/* === Священные кнопки Культа Механикус === */
-.btn {
-    background: linear-gradient(to bottom, #2a2a4e, #1a1a2e);
-    color: #e0e0ff;
-    border: 1px solid #4a4a8a;
-    border-radius: 4px;
-    padding: 0.5rem 1rem;
-    font-family: 'Courier New', monospace;
-    font-size: 0.95em;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    text-align: center;
-    min-width: 80px;
-}
-
-.btn:hover {
-    background: linear-gradient(to bottom, #3a3a6e, #2a2a4e);
-    border-color: #6a6a9a;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
-}
-
-.btn:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.btn--primary {
-    background: linear-gradient(to bottom, #4a2a4e, #2a1a2e);
-    border-color: #8a4a8a;
-}
-
-.btn--primary:hover {
-    background: linear-gradient(to bottom, #6a4a6e, #4a2a4e);
-    border-color: #aa6a9a;
-}
-
-.btn--small {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.85em;
-    min-width: auto;
-}
-
-/* Кнопка закрытия (×) */
-.close {
-    float: right;
-    cursor: pointer;
-    font-weight: bold;
-    color: #ff6666;
-    font-size: 1.4em;
-    line-height: 1;
-    padding: 0.2rem;
-    border-radius: 3px;
-    transition: background 0.2s;
-}
-
-.close:hover {
-    background: rgba(255, 102, 102, 0.2);
-    color: #ff9999;
-}
-
-/* Адаптивная панель управления */
+/* === Контролы и переключатели === */
 .controls {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1rem 0;
 }
 
 .period-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
 }
 
 .period-buttons .btn {
-    flex: 1 1 120px; /* Минимум 120px, растягивается */
-    min-width: 0; /* Важно для flex */
+  flex: 1 1 120px;
+  min-width: 0;
 }
 
 .custom-range {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
 }
 
 .date-inputs {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .date-inputs label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    font-size: 0.9em;
-    color: #c0c0ff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9em;
+  color: #c0c0ff;
 }
 
 .date-inputs input {
-    width: auto;
-    padding: 0.3rem;
-    font-size: 0.95em;
+  width: auto;
+  padding: 0.3rem;
+  font-size: 0.95em;
 }
 
 .apply-btn {
-    align-self: flex-end;
-    margin-top: 0.25rem;
+  align-self: flex-end;
+  margin-top: 0.25rem;
 }
 
-/* Для очень узких экранов */
-@media (max-width: 360px) {
-    .period-buttons .btn {
-        flex: 1 1 100%; /* Кнопки в один столбец */
-    }
-
-    .date-inputs {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .date-inputs input {
-        width: 100%;
-    }
-}
-
-/* Адаптивный календарь */
+/* === Календарь === */
 .calendar {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
-    margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-top: 1rem;
 }
 
-/* Заголовки месяцев */
 .month-header {
-    text-align: center;
-    background: #252540;
-    padding: 0.4rem;
-    margin-top: 0.8rem;
-    font-weight: bold;
-    font-size: clamp(1em, 3vw, 1.2em); /* Адаптивный заголовок месяца */
+  text-align: center;
+  background: var(--bg-header);
+  padding: 0.4rem;
+  margin-top: 0.8rem;
+  font-weight: bold;
+  font-size: clamp(1em, 3vw, 1.2em);
+  border-radius: 4px;
 }
 
-/* Дни календаря */
 .day {
-    border: 1px solid #333;
-    background: #1a1a2e;
-    display: flex;
-    flex-direction: column;
-    padding: 0.2rem;
-    min-height: 50px; /* Уменьшено для мобильных */
-    gap: 0.1rem;
-    font-size: clamp(0.7em, 2.2vw, 0.85em); /* Адаптивный размер дня */
+  border: 1px solid var(--border-color);
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  padding: 0.2rem;
+  min-height: 50px;
+  gap: 0.1rem;
+  font-size: clamp(0.7em, 2.2vw, 0.85em);
 }
 
 .day .day-number {
-    text-align: right;
-    font-weight: bold;
-    color: #aaa;
+  text-align: right;
+  font-weight: bold;
+  color: var(--text-muted);
 }
 
-/* Для маленьких экранов */
-@media (max-width: 480px) {
-    .calendar {
-        gap: 1px;
-    }
-
-    .day {
-        min-height: 45px;
-        padding: 0.15rem;
-    }
-
-    .day .day-number {
-        font-size: 0.75em;
-    }
+.day.has-tasks {
+  background: var(--bg-panel-hover);
+  cursor: pointer;
 }
 
-/* Адаптивные модальные окна */
+/* === Модальные окна === */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 100;
+}
+
 .modal-content {
-    width: 95%;
-    max-width: 500px;
-    padding: 1.2rem;
-    margin: 10vh auto;
+  background: #16213e;
+  margin: 10vh auto;
+  padding: 1.2rem;
+  width: 95%;
+  max-width: 500px;
+  max-height: 85vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-accent);
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
-@media (max-width: 480px) {
-    .modal-content {
-        padding: 1rem;
-        margin: 5vh auto;
-    }
-
-    .modal-content h3 {
-        font-size: 1.1em;
-    }
-
-    form label {
-        font-size: 0.9em;
-    }
-
-    .btn {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.9em;
-    }
+/* === Форма задачи === */
+.task-details {
+  margin: 1.2rem 0;
+  line-height: 1.6;
 }
 
-/* === Динамический свитчер с перемещающимся текстом === */
+.detail-row {
+  margin-bottom: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.detail-row strong {
+  min-width: 230px;
+  color: var(--text-accent);
+}
+
+.task-note {
+  background: var(--bg-panel);
+  padding: 0.6rem;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  margin-top: 0.4rem;
+  overflow-x: auto;
+}
+
+.priority-badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.85em;
+}
+
+.priority-badge.routine      { background: #2a2a2a; color: #aaa; }
+.priority-badge.high         { background: #3a2e1f; color: #ffcc80; }
+.priority-badge.critical     { background: #3a1f1f; color: #ff8a8a; }
+.priority-badge.done         { background: #1f3a1f; color: #8aff8a; }
+.priority-badge.inprogress   { background: #3a3a1f; color: #ffdd8a; }
+.priority-badge.overdue      { background: #3a1f1f; color: #ff8a8a; }
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+
+.tag-item {
+  background: var(--bg-header);
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+  border: 1px solid var(--border-accent);
+}
+
+.modal-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.modal-actions__left {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* === Кнопки === */
+.btn {
+  background: linear-gradient(to bottom, var(--bg-panel-hover), var(--bg-panel));
+  color: var(--text-main);
+  border: 1px solid var(--border-accent);
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  min-width: 80px;
+}
+
+.btn:hover {
+  background: linear-gradient(to bottom, #3a3a6e, var(--bg-panel-hover));
+  border-color: #6a6a9a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.btn--primary {
+  background: linear-gradient(to bottom, #4a2a4e, #2a1a2e);
+  border-color: #8a4a8a;
+}
+
+.btn--primary:hover {
+  background: linear-gradient(to bottom, #6a4a6e, #4a2a4e);
+  border-color: #aa6a9a;
+}
+
+.btn--small {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85em;
+  min-width: auto;
+}
+
+/* === Закрытие === */
+.close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--danger);
+  font-size: 1.4em;
+  line-height: 1;
+  padding: 0.2rem;
+  border-radius: 3px;
+  transition: background 0.2s;
+  z-index: 10;
+}
+
+.close:hover {
+  background: rgba(255, 102, 102, 0.2);
+  color: var(--danger-light);
+}
+
+/* === Переключатель режима === */
+.header {
+  position: relative;
+  text-align: center;
+  margin: 1rem 0;
+  padding: 0 100px;
+  min-height: 36px;
+}
+
 .view-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
   align-items: center;
   height: 36px;
@@ -349,24 +326,23 @@ select {
   left: 0;
   right: 0;
   bottom: 0;
-  background: #2a2a4e;
+  background: var(--bg-panel-hover);
   transition: 0.3s;
   border-radius: 26px;
 }
 
-.slider:before {
+.slider::before {
   position: absolute;
   content: "";
   height: 20px;
   width: 20px;
   left: 3px;
   bottom: 3px;
-  background: #8a8aff;
+  background: var(--text-accent);
   transition: 0.3s;
   border-radius: 50%;
 }
 
-/* === Надписи === */
 .mode-label {
   position: absolute;
   top: 50%;
@@ -382,68 +358,49 @@ select {
 }
 
 .mode-label.compact {
-  right: 8px; /* Положение для "Кружки" */
-  color: #8a8aff;
+  right: 8px;
+  color: var(--text-accent);
 }
 
 .mode-label.list {
   opacity: 0;
-  left: 8px; /* Положение для "Список" */
-  color: #aaa;
+  left: 8px;
+  color: var(--text-muted);
 }
 
-/* Когда включён режим "Список" */
 .toggle-switch input:checked + .slider {
-  background: #1a1a2e;
+  background: var(--bg-panel);
 }
 
-.toggle-switch input:checked + .slider:before {
+.toggle-switch input:checked + .slider::before {
   transform: translateX(64px);
 }
 
 .toggle-switch input:checked ~ .mode-label.compact {
   opacity: 0;
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .toggle-switch input:checked ~ .mode-label.list {
   opacity: 1;
-  color: #8a8aff;
+  color: var(--text-accent);
 }
 
-/* === Заголовок — относительный контекст для абсолютного позиционирования === */
-.header {
-  position: relative;
-  text-align: center;       /* ← центрируем содержимое */
-  margin: 1rem 0;
-  padding: 0 100px 0 100px;     /* ← резервируем место СПРАВА под свитчер и слева для симметрии*/
-  min-height: 36px;         /* ← гарантируем высоту для свитчера */
+/* === Элементы формы === */
+select,
+.date-inputs input {
+  background: var(--bg-panel);
+  color: var(--text-main);
+  border: 1px solid var(--border-accent);
+  padding: 0.25rem;
+  border-radius: 3px;
+  font-family: monospace;
 }
 
-.header h1 {
-  margin: 0;
-  font-size: clamp(1.4em, 4vw, 2em);
-  line-height: 1.2;
-}
-
-/* === Свитчер — абсолютно позиционированный в правом верхнем углу === */
-.view-toggle {
-  position: absolute;
-  top: 0;
-  right: 0;
-}
-
-/* === Стили свитчера (ваши, без изменений) === */
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 90px;
-  height: 26px;
-}
-
+/* === Адаптивность === */
 @media (max-width: 600px) {
   .header {
-    padding: 0 0 0 0;
+    padding: 0;
     flex-direction: column;
     align-items: flex-start;
   }
@@ -451,73 +408,62 @@ select {
   .view-toggle {
     display: none;
   }
-}
 
-/* === Форма просмотра задачи === */
-.task-details {
-  margin: 1.2rem 0;
-  line-height: 1.6;
-}
-
-.detail-row {
-  margin-bottom: 0.6rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.detail-row strong {
-  min-width: 180px;
-  color: #8a8aff;
-}
-
-.task-note {
-  background: #1a1a2e;
-  padding: 0.6rem;
-  border-radius: 4px;
-  white-space: pre-wrap;
-  font-family: monospace;
-  margin-top: 0.4rem;
-  overflow-x: auto;
-}
-
-.priority-badge {
-  padding: 0.2rem 0.6rem;
-  border-radius: 4px;
-  font-weight: bold;
-  text-transform: uppercase;
-  font-size: 0.85em;
-}
-
-.priority-badge.routine { background: #2a2a2a; color: #aaa; }
-.priority-badge.high { background: #3a2e1f; color: #ffcc80; }
-.priority-badge.critical { background: #3a1f1f; color: #ff8a8a; }
-
-.tags-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.2rem;
-}
-
-.tag-item {
-  background: #252540;
-  padding: 0.2rem 0.5rem;
-  border-radius: 3px;
-  font-size: 0.85em;
-  border: 1px solid #4a4a8a;
-}
-
-.modal-actions {
-  margin-top: 1.5rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-}
-
-/* Адаптивность */
-@media (max-width: 600px) {
   .detail-row strong {
     min-width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    width: 95%;
+    max-width: 500px;
+    max-height: 80vh;
+    padding: 1rem;
+    margin: 8vh auto;
+  }
+
+  .modal-content h3 {
+      font-size: 1.1em;
+      margin-top: 0;
+      padding-right: 2.5rem; /* ← резервируем место под .close */
+      position: relative;    /* ← гарантирует корректный контекст наложения */
+    }
+
+  form label {
+    font-size: 0.9em;
+  }
+
+  .btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9em;
+  }
+
+  .calendar {
+    gap: 1px;
+  }
+
+  .day {
+    min-height: 45px;
+    padding: 0.15rem;
+  }
+
+  .day .day-number {
+    font-size: 0.75em;
+  }
+}
+
+@media (max-width: 360px) {
+  .period-buttons .btn {
+    flex: 1 1 100%;
+  }
+
+  .date-inputs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .date-inputs input {
+    width: 100%;
   }
 }
