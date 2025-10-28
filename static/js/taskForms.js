@@ -71,7 +71,7 @@ export function setupFormHandlers(onTaskChange) {
         tags: parseTags(document.getElementById('newTaskTags')?.value),
         status: document.getElementById('taskStatus')?.value || 'planned'
       };
-        console.log(data)
+
       try {
         const res = await fetch('/tasks', {
           method: 'POST',
@@ -82,7 +82,7 @@ export function setupFormHandlers(onTaskChange) {
         if (res.ok) {
           document.getElementById('addTaskModal').style.display = 'none';
           location.reload();
-          alert('успешно');
+
         } else {
           const err = await res.json();
           alert('Ошибка создания: ' + (err.error || 'неизвестно'));

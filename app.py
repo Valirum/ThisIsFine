@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from models import db, Task, Tag
+from models import db, Task, Tag, TaskStatusLog
 from datetime import datetime, timezone
 import os
 from pathlib import Path
@@ -103,34 +103,37 @@ def get_tasks():
     due_from = request.args.get('due_from')
     due_to = request.args.get('due_to')
 
+    if not due_from or not due_to:
+        return jsonify({"error": "Требуются параметры due_from и due_to"}), 400
+
+    try:
+        start_dt = datetime.fromisoformat(due_from.replace('Z', '+00:00'))
+        if start_dt.tzinfo is None:
+            start_dt = start_dt.replace(tzinfo=timezone.utc)
+        end_dt = datetime.fromisoformat(due_to.replace('Z', '+00:00'))
+        if end_dt.tzinfo is None:
+            end_dt = end_dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return jsonify({"error": "Неверный формат даты (ожидается ISO 8601)"}), 400
+
     query = Task.query
 
     if tag:
-        # ✅ Правильная фильтрация по тегу в many-to-many
         query = query.filter(Task.tags.any(name=tag.strip().lower()))
-
     if priority:
         query = query.filter(Task.priority == priority)
 
-    if due_from:
-        try:
-            dt = datetime.fromisoformat(due_from.replace('Z', '+00:00'))
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            query = query.filter(Task.due_at >= dt)
-        except ValueError:
-            return jsonify({"error": "Invalid 'due_from' datetime format"}), 400
+    # Фильтр: задача отображается, если ЛЮБАЯ из её дат попадает в диапазон
+    query = query.filter(
+        db.or_(
+            db.and_(Task.planned_at.isnot(None), Task.planned_at >= start_dt, Task.planned_at <= end_dt),
+            db.and_(Task.due_at >= start_dt, Task.due_at <= end_dt),
+            db.and_(Task.grace_end.isnot(None), Task.grace_end >= start_dt, Task.grace_end <= end_dt),
+            db.and_(Task.completed_at.isnot(None), Task.completed_at >= start_dt, Task.completed_at <= end_dt)
+        )
+    )
 
-    if due_to:
-        try:
-            dt = datetime.fromisoformat(due_to.replace('Z', '+00:00'))
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            query = query.filter(Task.due_at <= dt)
-        except ValueError:
-            return jsonify({"error": "Invalid 'due_to' datetime format"}), 400
-
-    tasks = query.order_by(Task.due_at).all()
+    tasks = query.all()
     return jsonify([t.to_dict() for t in tasks]), 200
 
 @app.route('/tags', methods=['GET'])
@@ -162,8 +165,17 @@ def update_task(task_id):
         task.note = data.get('note')
     if 'priority' in data:
         task.priority = data['priority']
-    if 'status' in data and data['status'] in ['planned', 'inProgress', 'done', 'overdue']:
-        task.status = data['status']
+
+    # В update_task()
+    if 'status' in data and data['status'] != task.status:
+        new_status = data['status']
+        if new_status == 'done' and task.status != 'done':
+            task.completed_at = datetime.now(timezone.utc)
+        elif new_status != 'done':
+            task.corrected_at = None
+        task.status = new_status  # ← один раз
+        log_entry = TaskStatusLog(task_id=task.id, status=new_status)
+        db.session.add(log_entry)
 
     # Числовые поля
     for field in ['duration_seconds', 'recurrence_seconds']:

@@ -1,13 +1,19 @@
 // main.js
 import { renderCalendar, setPeriodState, setViewMode } from './calendarRenderer.js';
-import { loadModals, getAddTaskPicker, getEditTaskPicker } from './modalManager.js';
 import { setupFormHandlers } from './taskForms.js';
+import {
+   getEditTaskPicker,
+   getEditPlannedTaskPicker,
+   getEditGraceEndPlannedTaskPicker,
+   loadModals,
+   getAddTaskPicker
+ } from './modalManager.js';
 
 let currentStart, currentEnd;
 let currentViewedTask = null;
 
 function setPeriod(period, start = null, end = null) {
-    console.log(period, start, end)
+
     localStorage.setItem('calendarPeriod', period);
     if (period === 'custom') {
         localStorage.setItem('customPeriodStart', start);
@@ -104,64 +110,81 @@ function handleDayClick(e) {
 }
 
 function populateEditForm(task) {
-      // Заполняем скалярные поля по id
-      document.getElementById('taskId').value = task.id;
-      document.getElementById('taskTitle').value = task.title || '';
-      document.getElementById('taskNote').value = task.note || '';
+  // Заполняем скалярные поля по id
+  document.getElementById('taskId').value = task.id;
+  document.getElementById('taskTitle').value = task.title || '';
+  document.getElementById('taskNote').value = task.note || '';
 
-      // Приоритет
-      const prioritySelect = document.getElementById('taskPriority');
-      if (prioritySelect) {
-        prioritySelect.value = task.priority || 'routine';
+  // Приоритет и статус
+  const prioritySelect = document.getElementById('taskPriority');
+  if (prioritySelect) prioritySelect.value = task.priority || 'routine';
+
+  const statusSelect = document.getElementById('taskStatus');
+  if (statusSelect) statusSelect.value = task.status || 'planned';
+
+  // Числовые поля
+  document.getElementById('taskDuration').value = task.duration_seconds || 0;
+  document.getElementById('taskRecurrence').value = task.recurrence_seconds || 0;
+
+  // Зависимости и теги
+  document.getElementById('taskDependencies').value = (task.dependencies || []).join(', ');
+  document.getElementById('taskTags').value = (task.tags || []).join(', ');
+
+  // === Работа с датами ===
+  const d = task.deadlines || {};
+
+  // --- Планируемое начало ---
+  const plannedAtEnabled = !!d.planned_at;
+  const plannedCheckbox = document.getElementById('editPlannedAtEnabled');
+  const plannedPickerDiv = document.getElementById('editPlannedAtDatetimePicker');
+
+  if (plannedCheckbox) {
+    plannedCheckbox.checked = plannedAtEnabled;
+    plannedPickerDiv.style.display = plannedAtEnabled ? 'block' : 'none';
+
+    if (plannedAtEnabled) {
+      const picker = getEditPlannedTaskPicker(); // ← ИСПОЛЬЗУЕМ ГЕТТЕР
+      if (picker?.setValue) {
+        picker.setValue(d.planned_at);
       }
+    }
+  }
 
-      document.getElementById('taskStatus').value = task.status || 'planned';
+  // --- Крайний срок (grace_end) ---
+  const graceEndEnabled = !!d.grace_end;
+  const graceCheckbox = document.getElementById('editGraceEndEnabled');
+  const gracePickerDiv = document.getElementById('editGraceEndDatetimePicker');
 
-      // Числовые поля
-      document.getElementById('taskDuration').value = task.duration_seconds || 0;
-      document.getElementById('taskRecurrence').value = task.recurrence_seconds || 0;
+  if (graceCheckbox) {
+    graceCheckbox.checked = graceEndEnabled;
+    gracePickerDiv.style.display = graceEndEnabled ? 'block' : 'none';
 
-      // Зависимости и теги
-      document.getElementById('taskDependencies').value = (task.dependencies || []).join(', ');
-      document.getElementById('taskTags').value = (task.tags || []).join(', ');
-
-      // === Работа с датами и чекбоксами ===
-      const d = task.deadlines || {};
-
-      // Планируемое начало
-      const plannedAtEnabled = !!d.planned_at;
-      const plannedCheckbox = document.getElementById('editPlannedAtEnabled');
-      const plannedPickerDiv = document.getElementById('editPlannedAtDatetimePicker');
-
-      if (plannedCheckbox) {
-        plannedCheckbox.checked = plannedAtEnabled;
-        plannedPickerDiv.style.display = plannedAtEnabled ? 'block' : 'none';
-
-        // Если пикер поддерживает setValue — обновляем его
-        if (plannedAtEnabled && window.editPlannedAtDatetimePicker?.setValue) {
-          window.editPlannedAtDatetimePicker.setValue(d.planned_at);
-        }
+    if (graceEndEnabled) {
+      const picker = getEditGraceEndPlannedTaskPicker(); // ← ГЕТТЕР
+      if (picker?.setValue) {
+        picker.setValue(d.grace_end);
       }
+    }
+  }
 
-      // Конец льготного периода
-      const graceEndEnabled = !!d.grace_end;
-      const graceCheckbox = document.getElementById('editGraceEndEnabled');
-      const gracePickerDiv = document.getElementById('editGraceEndDatetimePicker');
+  // --- Срок выполнения (due_at) — обязателен ---
+  const duePicker = getEditTaskPicker(); // ← ГЕТТЕР
+  if (d.due_at && duePicker?.setValue) {
+    duePicker.setValue(d.due_at);
+  }
 
-      if (graceCheckbox) {
-        graceCheckbox.checked = graceEndEnabled;
-        gracePickerDiv.style.display = graceEndEnabled ? 'block' : 'none';
+  // === Назначаем обработчики переключения видимости (один раз) ===
+  const attachToggle = (checkbox, pickerDiv) => {
+    if (!checkbox) return;
+    const handler = () => {
+      pickerDiv.style.display = checkbox.checked ? 'block' : 'none';
+    };
+    checkbox.removeEventListener('change', handler);
+    checkbox.addEventListener('change', handler);
+  };
 
-        if (graceEndEnabled && window.editGraceEndDatetimePicker?.setValue) {
-          window.editGraceEndDatetimePicker.setValue(d.grace_end);
-        }
-      }
-
-      // Срок выполнения (due_at) — обязателен
-      const duePicker = window.editTaskPickerInstance; // или getEditTaskPicker()
-      if (d.due_at && duePicker?.setValue) {
-        duePicker.setValue(d.due_at);
-      }
+  attachToggle(plannedCheckbox, plannedPickerDiv);
+  attachToggle(graceCheckbox, gracePickerDiv);
 }
 
 function showEditTask(task) {

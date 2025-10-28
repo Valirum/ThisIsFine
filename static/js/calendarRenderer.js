@@ -1,8 +1,15 @@
 // calendarRenderer.js
-import { PRIORITY_COLORS, SOFT_BACKGROUNDS, PRIORITY_ORDER, MONTH_NAMES } from './utils.js';
+import { PRIORITY_COLORS, SOFT_BACKGROUNDS, MONTH_NAMES } from './utils.js';
 
 let currentStart, currentEnd;
 let useCompactView = true;
+
+function formatTime(dateStr) {
+    if (!dateStr) return '';
+    const dt = new Date(dateStr);
+    if (isNaN(dt.getTime())) return '';
+    return dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); // "15:00"
+}
 
 export function setPeriodState(start, end) {
     currentStart = start;
@@ -17,6 +24,53 @@ export function setViewMode(compact) {
     useCompactView = compact;
 }
 
+// Определяет, в какой день отображать задачу
+// Определяет, в какой день и с каким временем отображать задачу
+function getDisplayDate(task) {
+    const now = new Date();
+    const due = new Date(task.deadlines.due_at);
+    const grace = task.deadlines.grace_end ? new Date(task.deadlines.grace_end) : null;
+    const planned = task.deadlines.planned_at ? new Date(task.deadlines.planned_at) : null;
+    const completed = task.completed_at ? new Date(task.completed_at) : null;
+
+    // 1. Если выполнена — всегда показываем в день завершения
+    if (task.status === 'done' && completed) {
+        return completed;
+    }
+
+    // 2. Если просрочена и есть льгота, и мы ещё в её пределах — показываем grace_end
+    if (task.status === 'overdue' && grace && now <= grace) {
+        return grace;
+    }
+
+    // 3. Для всех остальных статусов — выбираем дату по статусу:
+    if (task.status === 'inProgress' || task.status === 'overdue') {
+        // В работе или просрочена → срок — due_at
+        return due;
+    }
+
+    // 4. Для planned — сначала planned_at, если задан, иначе due_at
+    if (task.status === 'planned') {
+        return planned || due;
+    }
+
+    // fallback
+    return due;
+}
+
+// Форматирует дату как YYYY-MM-DD
+function formatDate(date) {
+    return date.toISOString().split('T')[0];
+}
+
+// Визуальные стили по статусу
+const STATUS_STYLES = {
+    done: { opacity: 0.6, textDecoration: 'line-through' },
+    inProgress: { fontWeight: 'bold', border: '1px solid #ffcc00' },
+    overdue: { boxShadow: '0 0 4px #ff4444' },
+    planned: {}
+};
+
 export async function renderCalendar() {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
@@ -25,24 +79,27 @@ export async function renderCalendar() {
 
     const startIso = currentStart.toISOString();
     let endIso = currentEnd.toISOString();
-    if (endIso.split('T')[1] == "00:00:00.000Z"){
-        endIso = endIso.split('T')[0]+"T23:59:59.999Z";}
-    console.log(currentStart.toISOString(), currentEnd.toISOString(), startIso, endIso)
-    const res = await fetch(`/tasks?due_from=${startIso}&due_to=${endIso}`);
+    if (endIso.endsWith('00:00:00.000Z')) {
+        endIso = endIso.split('T')[0] + 'T23:59:59.999Z';
+    }
+
+    const res = await fetch(`/tasks?due_from=${encodeURIComponent(startIso)}&due_to=${encodeURIComponent(endIso)}`);
     const tasks = await res.json();
 
+    // Группируем задачи по дню отображения
     const tasksByDate = {};
-    tasks.forEach(t => {
-        const dateKey = t.deadlines.due_at.split('T')[0];
+    tasks.forEach(task => {
+        const displayDate = getDisplayDate(task);
+        const dateKey = formatDate(displayDate);
         if (!tasksByDate[dateKey]) tasksByDate[dateKey] = [];
-        tasksByDate[dateKey].push(t);
+        tasksByDate[dateKey].push(task);
     });
 
     const day = new Date(currentStart);
     let currentMonthKey = null;
 
     while (day <= currentEnd) {
-        const dateStr = day.toISOString().split('T')[0];
+        const dateStr = formatDate(day);
         const monthKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}`;
 
         if (monthKey !== currentMonthKey) {
@@ -50,11 +107,6 @@ export async function renderCalendar() {
             const monthHeader = document.createElement('div');
             monthHeader.className = 'month-header';
             monthHeader.style.gridColumn = '1 / -1';
-            monthHeader.style.background = '#252540';
-            monthHeader.style.padding = '0.5rem';
-            monthHeader.style.marginTop = '1rem';
-            monthHeader.style.fontWeight = 'bold';
-            monthHeader.style.textAlign = 'center';
             monthHeader.textContent = `${MONTH_NAMES[day.getMonth()]} ${day.getFullYear()}`;
             calendarEl.appendChild(monthHeader);
         }
@@ -62,24 +114,15 @@ export async function renderCalendar() {
         const dayTasks = tasksByDate[dateStr] || [];
         const dayEl = document.createElement('div');
         dayEl.className = 'day';
-        dayEl.style.position = 'relative';
-        dayEl.style.display = 'flex';
-        dayEl.style.flexDirection = 'column';
-        dayEl.style.padding = '0.25rem';
-        dayEl.style.minHeight = useCompactView ? '60px' : 'auto';
-        dayEl.style.gap = '0.15rem';
         dayEl.dataset.date = dateStr;
 
         const dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
         dayNumber.textContent = day.getDate();
-        dayNumber.style.textAlign = 'right';
-        dayNumber.style.fontSize = '0.85em';
-        dayNumber.style.color = '#aaa';
-        dayNumber.style.fontWeight = 'bold';
         dayEl.appendChild(dayNumber);
 
         if (useCompactView) {
-            // === Режим кружков ===
+            // === Компактный режим: кружки с учётом статуса ===
             if (dayTasks.length > 0) {
                 const sortedTasks = [...dayTasks].sort((a, b) => {
                     const order = { routine: 0, high: 1, critical: 2 };
@@ -98,12 +141,19 @@ export async function renderCalendar() {
 
                 tasksToDisplay.forEach(task => {
                     const badge = document.createElement('div');
-                    badge.style.width = '8px';
-                    badge.style.height = '8px';
-                    badge.style.borderRadius = '50%';
+                    badge.className = 'task-indicator'; // сброс
+                    badge.classList.add(`status-${task.status.toLowerCase()}`);
                     badge.style.backgroundColor = PRIORITY_COLORS[task.priority] || '#666';
-                    badge.style.border = '1px solid #000';
-                    badge.style.boxShadow = '0 0 1px #fff';
+
+                    // Визуальный акцент по статусу (например, рамка)
+                    if (task.status === 'done') {
+                        badge.style.opacity = '0.5';
+                    } else if (task.status === 'inProgress') {
+                        badge.style.boxShadow = '0 0 2px #ffcc00';
+                    } else if (task.status === 'overdue') {
+                        badge.style.boxShadow = '0 0 3px #ff4444';
+                    }
+
                     badgeContainer.appendChild(badge);
                 });
 
@@ -126,44 +176,51 @@ export async function renderCalendar() {
                 dayEl.appendChild(badgeContainer);
             }
         } else {
-            // === Режим текста задач ===
+            // === Текстовый режим ===
             if (dayTasks.length > 0) {
+                // Сортировка: сначала по времени отображения, затем по приоритету
                 const sortedTasks = [...dayTasks].sort((a, b) => {
+                    const timeA = getDisplayDate(a).getTime();
+                    const timeB = getDisplayDate(b).getTime();
+                    if (timeA !== timeB) {
+                        return timeA - timeB; // по возрастанию времени
+                    }
+                    // При равенстве времени — по приоритету (critical → high → routine)
                     const order = { routine: 0, high: 1, critical: 2 };
                     return order[b.priority] - order[a.priority];
                 });
 
                 sortedTasks.forEach(task => {
                     const taskLine = document.createElement('div');
-                    const MAX_TITLE_LENGTH = 24;
-                    let displayTitle = task.title;
+                    taskLine.className = 'task-line';
+                    taskLine.classList.add(`status-${task.status.toLowerCase()}`);
+
+                    // Определяем время для отображения
+                    const displayDate = getDisplayDate(task);
+                    const timeStr = formatTime(displayDate.toISOString());
+
+                    // Формируем строку: "Заголовок 15:00"
+                    const MAX_TITLE_LENGTH = 18; // уменьшено, чтобы оставить место для времени
+                    let titlePart = task.title;
                     if (task.title.length > MAX_TITLE_LENGTH) {
-                        displayTitle = task.title.substring(0, MAX_TITLE_LENGTH - 1).trim() + '…';
+                        titlePart = task.title.substring(0, MAX_TITLE_LENGTH - 1).trim() + '…';
                     }
-                    taskLine.textContent = displayTitle;
-                    taskLine.title = task.title;
-                    taskLine.style.fontSize = '0.75em';
-                    taskLine.style.padding = '0.15rem 0.25rem';
-                    taskLine.style.borderRadius = '2px';
-                    taskLine.style.color = '#e0e0ff';
+
+                    const fullText = timeStr ? `${titlePart} ${timeStr}` : titlePart;
+                    taskLine.textContent = fullText;
+                    taskLine.title = `${task.title} [${task.status}] — ${displayDate.toLocaleString('ru-RU')}`;
+
+                    // Стили по приоритету
                     taskLine.style.backgroundColor = SOFT_BACKGROUNDS[task.priority] || '#2a2a2a';
                     taskLine.style.borderLeft = `3px solid ${PRIORITY_COLORS[task.priority] || '#666'}`;
-                    taskLine.style.whiteSpace = 'nowrap';
-                    taskLine.style.overflow = 'hidden';
-                    taskLine.style.textOverflow = 'ellipsis';
 
-                    // === КРИТИЧЕСКИ ВАЖНО: обработчик клика по задаче ===
                     taskLine.addEventListener('click', (e) => {
-                        e.stopPropagation(); // ОСТАНОВИТЬ всплытие!
-                        window.dispatchEvent(new CustomEvent('task-clicked', {
-                            detail: { task }
-                        }));
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent('task-clicked', { detail: { task } }));
                     });
 
                     dayEl.appendChild(taskLine);
                 });
-            } else {
-                dayEl.style.minHeight = '60px';
             }
         }
 

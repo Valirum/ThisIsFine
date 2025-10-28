@@ -105,12 +105,13 @@ h1 {
 }
 
 .day {
+  position: relative;
   border: 1px solid var(--border-color);
   background: var(--bg-panel);
   display: flex;
   flex-direction: column;
   padding: 0.2rem;
-  min-height: 50px;
+  min-height: 80px;
   gap: 0.1rem;
   font-size: clamp(0.7em, 2.2vw, 0.85em);
 }
@@ -466,4 +467,73 @@ select,
   .date-inputs input {
     width: 100%;
   }
+}
+
+/* === Стили индикаторов по статусу === */
+.task-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid #000;
+  box-shadow: 0 0 1px #fff;
+}
+
+.task-indicator.status-done {
+  opacity: 0.5;
+}
+
+.task-indicator.status-inprogress {
+  box-shadow: 0 0 3px #ffcc00;
+}
+
+.task-indicator.status-overdue {
+  box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
+  animation: pulse-overdue 2s infinite;
+}
+
+@keyframes pulse-overdue {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 68, 68, 0); }
+}
+
+/* === Стили задач в текстовом режиме по статусу === */
+.task-line {
+  font-size: 0.75em;
+  padding: 0.15rem 0.25rem;
+  border-radius: 2px;
+  color: #e0e0ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  margin-bottom: 0.25rem; /* ← расстояние между задачами */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.task-line.status-done {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.task-line.status-inprogress {
+  box-shadow: inset 0 0 0 1px #ffcc00;
+}
+
+.task-line.status-overdue {
+  box-shadow: inset 0 0 0 1px #ff4444, 0 0 4px rgba(255, 68, 68, 0.5);
+  animation: pulse-overdue-text 2s infinite;
+}
+
+.task-line::after {
+  content: attr(data-time);
+  font-size: 0.7em;
+  color: #aaa;
+}
+
+@keyframes pulse-overdue-text {
+  0%, 100% { box-shadow: inset 0 0 0 1px #ff4444, 0 0 0 0 rgba(255, 68, 68, 0.5); }
+  50% { box-shadow: inset 0 0 0 1px #ff4444, 0 0 0 6px rgba(255, 68, 68, 0); }
 }

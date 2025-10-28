@@ -18,6 +18,14 @@ class Tag(db.Model):
     def __repr__(self):
         return f"<Tag {self.name}>"
 
+# models.py
+class TaskStatusLog(db.Model):
+    __tablename__ = 'task_status_log'
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+    status = db.Column(db.String(20), nullable=False)  # planned, inProgress, done...
+    changed_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
 class Task(db.Model):
     __tablename__ = 'tasks'
 
@@ -32,6 +40,7 @@ class Task(db.Model):
     recurrence_seconds = db.Column(db.Integer, nullable=False, default=0)
     dependencies = db.Column(db.JSON, nullable=True, default=list)
     status = db.Column(db.String(20), nullable=False, default='planned')  # planned | inProgress | done | overdue
+    completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     # Связь с тегами
     tags = db.relationship(
@@ -56,5 +65,6 @@ class Task(db.Model):
             "priority": self.priority,
             "recurrence_seconds": self.recurrence_seconds,
             "dependencies": self.dependencies or [],
-            "status": self.status
+            "status": self.status,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None  # ← ДОБАВЛЕНО
         }
