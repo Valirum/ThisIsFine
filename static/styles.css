@@ -533,6 +533,110 @@ select,
   color: #aaa;
 }
 
+/* === Контейнер задачи в модалке дня === */
+.day-task-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.6rem;
+  background: #1a1a2e;
+  border-radius: 8px;
+  border-left: 4px solid #666;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+  cursor: pointer;
+}
+
+.day-task-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Приоритеты — левая полоса */
+.day-task-item.priority-routine { border-left-color: #555; }
+.day-task-item.priority-high    { border-left-color: #ffcc00; }
+.day-task-item.priority-critical{ border-left-color: #ff4444; }
+
+/* Статусы */
+.day-task-item.status-done { opacity: 0.65; text-decoration: line-through; }
+.day-task-item.status-inprogress { background: #22253a; }
+.day-task-item.status-overdue {
+  background: #2a1a1a;
+  box-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
+  animation: pulse-overdue-text 2s infinite;
+}
+
+/* Верхний блок: теги слева, мета — справа */
+.day-task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.4rem;
+}
+
+.day-task-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-width: 60%;
+}
+
+.day-task-tag {
+  padding: 0.15rem 0.4rem;
+  border-radius: 12px;
+  font-size: 0.75em;
+  color: #fff;
+  white-space: nowrap;
+  font-weight: bold;
+  text-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+.day-task-tag--more {
+  background: #3a3a5a !important;
+  color: #ccc;
+}
+
+/* Мета (приоритет + статус) — справа */
+.day-task-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.priority-badge, .status-badge {
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7em;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+/* Цвета приоритетов */
+.priority-badge.routine { background: #2a2a2a; color: #aaa; }
+.priority-badge.high { background: #3a2e1f; color: #ffcc80; }
+.priority-badge.critical { background: #3a1f1f; color: #ff8a8a; }
+
+/* Цвета статусов */
+.status-badge.planned { background: #1f2a1f; color: #8aff8a; }
+.status-badge.inprogress { background: #3a3a1f; color: #ffdd8a; }
+.status-badge.done { background: #1f2a1f; color: #8aff8a; opacity: 0.8; }
+.status-badge.overdue { background: #3a1f1f; color: #ff8a8a; }
+
+/* Заголовок и время */
+.day-task-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+
+.day-task-title .time {
+  font-size: 0.85em;
+  color: #aaa;
+  font-weight: normal;
+}
+
 @keyframes pulse-overdue-text {
   0%, 100% { box-shadow: inset 0 0 0 1px #ff4444, 0 0 0 0 rgba(255, 68, 68, 0.5); }
   50% { box-shadow: inset 0 0 0 1px #ff4444, 0 0 0 6px rgba(255, 68, 68, 0); }

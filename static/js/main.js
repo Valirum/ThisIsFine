@@ -86,21 +86,54 @@ function handleDayClick(e) {
 
     document.getElementById('modalDate').textContent = `Задачи на ${date}`;
     const listEl = document.getElementById('tasksList');
-    listEl.innerHTML = tasks.length
-        ? tasks.map(t => {
+
+    if (tasks.length === 0) {
+        listEl.innerHTML = '<em>Нет задач</em>';
+    } else {
+        listEl.innerHTML = tasks.map(t => {
             const dueTime = new Date(t.deadlines.due_at).toLocaleTimeString('ru-RU', {
                 hour: '2-digit',
                 minute: '2-digit'
             });
-            return `<div class="task-item" data-task-id="${t.id}">
-                ${t.title} [${t.priority}] — ${dueTime}
-            </div>`;
-        }).join('')
-        : '<em>Нет задач</em>';
+
+            // Теги: максимум 2, остальные — в "ещё N"
+            const visibleTags = t.tags.slice(0, 2);
+            const hiddenCount = t.tags.length - 2;
+
+            const tagsHtml = visibleTags.map(tag => {
+                // Цвет тега — из данных, если есть, иначе серый
+                const tagObj = window.allTags?.find(tg => tg.name === tag) || { color: '#4a4a8a' };
+                return `<span class="day-task-tag" style="background-color: ${tagObj.color}">${tag}</span>`;
+            }).join('');
+
+            const moreTagsHtml = hiddenCount > 0
+                ? `<span class="day-task-tag day-task-tag--more">+${hiddenCount}</span>`
+                : '';
+
+            return `
+                <div class="day-task-item priority-${t.priority} status-${t.status}" data-task-id="${t.id}">
+                    <div class="day-task-header">
+                        <div class="day-task-tags">
+                            ${tagsHtml}${moreTagsHtml}
+                        </div>
+                        <div class="day-task-meta">
+                            <span class="priority-badge ${t.priority}">${t.priority}</span>
+                            <span class="status-badge ${t.status}">${t.status}</span>
+                        </div>
+                    </div>
+                    <div class="day-task-title">
+                        <span>${t.title}</span>
+                        <span class="time">${dueTime}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 
     document.getElementById('dayModal').style.display = 'block';
 
-    document.querySelectorAll('.task-item').forEach(el => {
+    // Обработчики кликов
+    document.querySelectorAll('.day-task-item').forEach(el => {
         el.addEventListener('click', () => {
             const taskId = Number(el.dataset.taskId);
             const task = tasks.find(t => t.id === taskId);

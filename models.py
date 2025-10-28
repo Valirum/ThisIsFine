@@ -13,10 +13,17 @@ task_tag = db.Table(
 class Tag(db.Model):
     __tablename__ = 'tags'
     name = db.Column(db.String(50), primary_key=True)
-    # В будущем: color, icon, created_at и т.д.
+    color = db.Column(db.String(7), nullable=False, default='#4a4a8a')  # HEX, например: #ff5555
+    # icon = db.Column(db.String(50), nullable=True)  # можно добавить позже
 
     def __repr__(self):
         return f"<Tag {self.name}>"
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "color": self.color
+        }
 
 # models.py
 class TaskStatusLog(db.Model):

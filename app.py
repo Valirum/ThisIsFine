@@ -24,6 +24,25 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+# Получить все теги (уже есть, но обновим)
+@app.route('/tags', methods=['GET'])
+def list_tags():
+    tags = Tag.query.order_by(Tag.name).all()
+    return jsonify([t.to_dict() for t in tags]), 200
+
+# Обновить цвет тега (опционально, для будущего UI)
+@app.route('/tags/<name>', methods=['PUT'])
+def update_tag(name):
+    tag = Tag.query.get_or_404(name)
+    data = request.get_json()
+    if 'color' in data:
+        color = data['color']
+        if not color.startswith('#') or len(color) != 7:
+            return jsonify({"error": "Цвет должен быть в формате #RRGGBB"}), 400
+        tag.color = color
+    db.session.commit()
+    return jsonify(tag.to_dict()), 200
+
 
 @app.route('/tasks', methods=['POST'])
 def create_task():
@@ -135,11 +154,6 @@ def get_tasks():
 
     tasks = query.all()
     return jsonify([t.to_dict() for t in tasks]), 200
-
-@app.route('/tags', methods=['GET'])
-def list_tags():
-    tags = Tag.query.order_by(Tag.name).all()
-    return jsonify([{"name": t.name} for t in tags]), 200
 
 
 # УДАЛЕНИЕ задачи
