@@ -59,9 +59,26 @@ export class DateTimePicker {
     }
 
     getValue() {
-        const datePart = this.dateInput.value;
-        const hour = this.hourSelect.value;
-        const minute = this.minuteSelect.value;
-        return datePart ? `${datePart}T${hour}:${minute}:00Z` : null;
+        const datePart = this.dateInput.value; // формат: "2025-10-29"
+        const hour = this.hourSelect.value;    // "15"
+        const minute = this.minuteSelect.value; // "30"
+
+        if (!datePart || hour === '' || minute === '') {
+            return null;
+        }
+
+        // Создаём строку в формате ISO ЛОКАЛЬНОГО времени (без Z!)
+        const localIso = `${datePart}T${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:00`;
+
+        // Парсим как локальное время
+        const localDate = new Date(localIso);
+
+        // Если дата невалидна — null
+        if (isNaN(localDate.getTime())) {
+            return null;
+        }
+
+        // Конвертируем в UTC и возвращаем корректную ISO-строку с Z
+        return localDate.toISOString(); // например: "2025-10-29T12:30:00.000Z"
     }
 }

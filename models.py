@@ -60,7 +60,7 @@ class Task(db.Model):
     def to_dict(self):
         def format_dt(dt):
             return dt.isoformat()+'Z' if dt else None
-        print(format_dt(self.completed_at))
+        print(self.completed_at, format_dt(self.completed_at), self.due_at.isoformat())
         return {
             "id": self.id,
             "title": self.title,
