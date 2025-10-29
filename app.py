@@ -8,6 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from dateutil import parser
 import requests
+import traceback
 
 # === Импорт автоподбора тегов ===
 from tag_suggester import TagSuggester
@@ -517,41 +518,41 @@ def receive_sync_tasks():
         return jsonify({"error": "Expected list of {task, logs}"}), 400
 
     for item in data:
-        task_data = item.get("task")
-        logs_data = item.get("logs", [])
+        task_dict = item.get("task")
+        logs_list = item.get("logs", [])
 
-        if not task_data or 'uuid' not in task_data:
+        if not task_dict or 'uuid' not in task_dict:
             continue  # пропускаем некорректные записи
 
-        existing = Task.query.filter_by(uuid=task_data['uuid']).first()
+        existing = Task.query.filter_by(uuid=task_dict['uuid']).first()
 
+        # === 1. Слияние задачи ===
         if existing:
-            # Сравниваем updated_at
             local_updated = existing.updated_at
             if local_updated.tzinfo is None:
                 local_updated = local_updated.replace(tzinfo=timezone.utc)
-            remote_updated = parser.isoparse(task_data['updated_at'])
+            remote_updated = parser.isoparse(task_dict['updated_at'])
             if remote_updated.tzinfo is None:
                 remote_updated = remote_updated.replace(tzinfo=timezone.utc)
 
             if remote_updated > local_updated:
-                update_task_from_dict(existing, task_data)
+                update_task_from_dict(existing, task_dict)
                 task = existing
             else:
-                task = existing  # всё равно нужно для логов
+                task = existing
         else:
-            task = create_task_from_dict(task_data)
+            task = create_task_from_dict(task_dict)
 
-        # === Синхронизация логов ===
+        # === 2. Слияние логов (только если задача создана/обновлена) ===
         if task:
-            # Получаем существующие логи как множество ключей (status + changed_at)
-            existing_logs = set()
+            # Получаем существующие логи как множество ключей (status + changed_at до секунды)
+            existing_log_keys = set()
             for log in TaskStatusLog.query.filter_by(task_uuid=task.uuid).all():
-                key = (log.status, log.changed_at.replace(microsecond=0))  # точность до секунды
-                existing_logs.add(key)
+                key = (log.status, log.changed_at.replace(microsecond=0))
+                existing_log_keys.add(key)
 
             # Добавляем новые логи
-            for log_entry in logs_data:
+            for log_entry in logs_list:
                 try:
                     status = log_entry.get("status")
                     changed_at_str = log_entry.get("changed_at")
@@ -560,20 +561,18 @@ def receive_sync_tasks():
                     changed_at = parser.isoparse(changed_at_str)
                     if changed_at.tzinfo is None:
                         changed_at = changed_at.replace(tzinfo=timezone.utc)
-                    # Округляем до секунды для сравнения
                     changed_at_sec = changed_at.replace(microsecond=0)
                     log_key = (status, changed_at_sec)
-                    if log_key not in existing_logs:
+                    if log_key not in existing_log_keys:
                         new_log = TaskStatusLog(
                             task_uuid=task.uuid,
                             status=status,
                             changed_at=changed_at
                         )
                         db.session.add(new_log)
-                        existing_logs.add(log_key)  # предотвращаем дубли в рамках одного запроса
-                except Exception as e:
-                    # Лог можно пропустить — задача важнее
-                    continue
+                        existing_log_keys.add(log_key)  # предотвращаем дубли в рамках одного запроса
+                except Exception:
+                    continue  # пропускаем битые логи
 
     db.session.commit()
     return jsonify({"status": "ok"}), 200
@@ -584,9 +583,6 @@ def delete_peer(peer_id):
     db.session.delete(peer)
     db.session.commit()
     return jsonify({"status": "ok"}), 200
-
-import requests
-from datetime import datetime, timezone
 
 @app.route('/sync/peers/sync', methods=['POST'])
 def sync_with_peer():
@@ -620,18 +616,19 @@ def sync_with_peer():
 
         # 3. Сливаем полученные задачи локально (как в receive_sync_tasks)
         for task_data in remote_tasks:
-            existing = Task.query.filter_by(uuid=task_data['uuid']).first()
+            print(task_data)
+            existing = Task.query.filter_by(uuid=task_data['task']['uuid']).first()
             if existing:
                 local_updated = existing.updated_at
                 if local_updated.tzinfo is None:
                     local_updated = local_updated.replace(tzinfo=timezone.utc)
-                remote_updated = parser.isoparse(task_data['updated_at'])
+                remote_updated = parser.isoparse(task_data['task']['updated_at'])
                 if remote_updated.tzinfo is None:
                     remote_updated = remote_updated.replace(tzinfo=timezone.utc)
                 if remote_updated > local_updated:
-                    update_task_from_dict(existing, task_data)
+                    update_task_from_dict(existing, task_data['task'])
             else:
-                create_task_from_dict(task_data)
+                create_task_from_dict(task_data['task'])
 
         # 4. Обновляем last_sync
         peer.last_sync = datetime.now(timezone.utc)
@@ -645,7 +642,7 @@ def sync_with_peer():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": f"Network error: {str(e)}"}), 500
     except Exception as e:
-        return jsonify({"error": f"Sync failed: {str(e)}"}), 500
+        return jsonify({"error": f"Sync failed: {str(e)}\n{traceback.format_exc()}"}), 500
 
 
 if __name__ == '__main__':
