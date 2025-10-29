@@ -233,19 +233,25 @@ function showEditTask(task) {
     document.getElementById('viewTaskModal').style.display = 'none';
     document.getElementById('dayModal').style.display = 'none';
     document.getElementById('taskModal').style.display = 'block';
+
+    document.getElementById('taskTitle')?.addEventListener('input', debounce(updateEditTagSuggestions, 500));
+    document.getElementById('taskNote')?.addEventListener('input', debounce(updateEditTagSuggestions, 500));
+
+    function updateEditTagSuggestions() {
+        const title = document.getElementById('taskTitle')?.value || '';
+        const note = document.getElementById('taskNote')?.value || '';
+        suggestTags(title, note).then(tags => {
+            const suggestionsEl = document.getElementById('editTagSuggestions');
+            if (suggestionsEl) {
+                suggestionsEl.innerHTML = tags.length
+                    ? `Предложить: ${tags.map(t => `<a href="#" class="suggested-tag">${t}</a>`).join(', ')}`
+                    : '';
+            }
+        });
+    }
 }
 
-function showAddTask(date) {
-    const addPicker = getAddTaskPicker();
-    addPicker.setValue(`${date}T12:00:00Z`);
-    document.getElementById('dayModal').style.display = 'none';
-    document.getElementById('addTaskModal').style.display = 'block';
-
-    // После открытия модалки
-    document.getElementById('newTaskTitle')?.addEventListener('input', debounce(updateTagSuggestions, 500));
-    document.getElementById('newTaskNote')?.addEventListener('input', debounce(updateTagSuggestions, 500));
-
-    function updateTagSuggestions() {
+function updateTagSuggestions() {
         const title = document.getElementById('newTaskTitle')?.value || '';
         const note = document.getElementById('newTaskNote')?.value || '';
         suggestTags(title, note).then(tags => {
@@ -259,32 +265,27 @@ function showAddTask(date) {
         });
     }
 
-    // Вставляет тег в поле
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('suggested-tag')) {
-            e.preventDefault();
-            const tag = e.target.textContent;
-            const input = document.getElementById('newTaskTags');
-            const current = input.value.split(',').map(s => s.trim()).filter(s => s);
-            if (!current.includes(tag)) {
-                current.push(tag);
-                input.value = current.join(', ');
-            }
-        }
-    });
-
-    // Простой debounce
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
             clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+            func(...args);
         };
-    }
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function showAddTask(date) {
+    const addPicker = getAddTaskPicker();
+    addPicker.setValue(`${date}T12:00:00Z`);
+    document.getElementById('dayModal').style.display = 'none';
+    document.getElementById('addTaskModal').style.display = 'block';
+
+    // После открытия модалки
+    document.getElementById('newTaskTitle')?.addEventListener('input', debounce(updateTagSuggestions, 500));
+    document.getElementById('newTaskNote')?.addEventListener('input', debounce(updateTagSuggestions, 500));
 }
 
 function formatDuration(seconds) {
@@ -396,6 +397,43 @@ function showViewTask(task) {
 function setupGlobalHandlers() {
     document.querySelectorAll('[data-period]').forEach(btn => {
         btn.addEventListener('click', e => setPeriod(e.target.dataset.period));
+    });
+
+    // Обработчик кликов по подсказкам в форме редактирования
+    // Единый глобальный обработчик для подсказок тегов
+    document.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('suggested-tag')) return;
+
+        e.preventDefault();
+
+        const tag = e.target.textContent.trim();
+        if (!tag) return;
+
+        // Определяем, в какой модалке мы находимся:
+        const inAddModal = document.getElementById('addTaskModal')?.style.display === 'block';
+        const inEditModal = document.getElementById('taskModal')?.style.display === 'block';
+
+        let input;
+        if (inAddModal) {
+            input = document.getElementById('newTaskTags');
+        } else if (inEditModal) {
+            input = document.getElementById('taskTags');
+        } else {
+            // На случай, если подсказки появятся вне модалок — безопасный выход
+            return;
+        }
+
+        if (!input) return;
+
+        const current = input.value
+            .split(',')
+            .map(s => s.trim())
+            .filter(s => s !== '');
+
+        if (!current.includes(tag)) {
+            current.push(tag);
+            input.value = current.join(', ');
+        }
     });
 
     // В main.js → setupGlobalHandlers()

@@ -157,13 +157,11 @@ def create_task():
     db.session.add(task)
     db.session.commit()
 
-    db.session.add(task)
-    db.session.commit()
+    log_entry = TaskStatusLog(task_id=task.id, status="planned")
+    db.session.add(log_entry)
 
-    # Теперь task.id точно существует
-    task_id = task.id
     task_title = task.title
-    task_note = task.note or ''
+    task_note = task.note if task.note else ''
     task_tag_names = [tag.name for tag in task.tags]  # сохраняем сейчас, чтобы не делать запрос в другом потоке
 
     # Обновляем модель автоподбора асинхронно
