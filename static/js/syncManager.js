@@ -61,13 +61,18 @@ export function setupSyncHandlers() {
             const statusEl = document.getElementById('syncStatus');
             try {
                 statusEl.textContent = 'Синхронизация...';
-                const res = await fetch(`/sync/peers/${encodeURIComponent(addr)}/sync`, { method: 'POST' });
+                const res = await fetch('/sync/peers/sync', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ address: addr })
+                });
                 if (res.ok) {
                     const data = await res.json();
                     statusEl.textContent = `✅ Успешно: получено ${data.tasks_received} задач`;
                 } else {
                     const err = await res.json();
                     statusEl.textContent = `❌ Ошибка: ${err.error || 'неизвестно'}`;
+                    consol.log(err.error);
                 }
             } catch (err) {
                 statusEl.textContent = `💥 Сбой сети: ${err.message}`;

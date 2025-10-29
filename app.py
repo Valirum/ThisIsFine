@@ -523,6 +523,68 @@ def delete_peer(peer_id):
     db.session.commit()
     return jsonify({"status": "ok"}), 200
 
+import requests
+from datetime import datetime, timezone
+
+@app.route('/sync/peers/sync', methods=['POST'])
+def sync_with_peer():
+    if request.headers.get('X-Sync-Token') != os.getenv('SYNC_TOKEN'):
+        return jsonify({"error": "Access denied"}), 403
+
+    data = request.get_json()
+    address = data.get('address')
+    if not address:
+        return jsonify({"error": "address required"}), 400
+
+    peer = PeerDevice.query.filter_by(address=address).first_or_404()
+
+    try:
+        # 1. Получаем задачи с удалённого узла
+        remote_url = f"http://{address}"
+        remote_tasks = requests.get(
+            f"{remote_url}/sync/tasks",
+            headers={"X-Sync-Token": os.getenv('SYNC_TOKEN')},
+            timeout=10
+        ).json()
+
+        # 2. Отправляем свои задачи туда
+        local_tasks = [t.to_dict() for t in Task.query.all()]
+        requests.post(
+            f"{remote_url}/sync/tasks",
+            json=local_tasks,
+            headers={"X-Sync-Token": os.getenv('SYNC_TOKEN')},
+            timeout=10
+        )
+
+        # 3. Сливаем полученные задачи локально (как в receive_sync_tasks)
+        for task_data in remote_tasks:
+            existing = Task.query.filter_by(uuid=task_data['uuid']).first()
+            if existing:
+                local_updated = existing.updated_at
+                if local_updated.tzinfo is None:
+                    local_updated = local_updated.replace(tzinfo=timezone.utc)
+                remote_updated = parser.isoparse(task_data['updated_at'])
+                if remote_updated.tzinfo is None:
+                    remote_updated = remote_updated.replace(tzinfo=timezone.utc)
+                if remote_updated > local_updated:
+                    update_task_from_dict(existing, task_data)
+            else:
+                create_task_from_dict(task_data)
+
+        # 4. Обновляем last_sync
+        peer.last_sync = datetime.now(timezone.utc)
+        db.session.commit()
+
+        return jsonify({
+            "status": "ok",
+            "tasks_received": len(remote_tasks)
+        }), 200
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"Network error: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"Sync failed: {str(e)}"}), 500
+
 
 if __name__ == '__main__':
     # Убедимся, что папка instance существует
