@@ -2,3 +2,5 @@ flask
 flask_sqlalchemy
 dotenv
 pymorphy3
+python-dateutil
+requests

@@ -14,7 +14,8 @@ export async function loadModals() {
         '/static/modals/task-modal.html',
         '/static/modals/add-task-modal.html',
         '/static/modals/view-task-modal.html',
-        '/static/modals/status-story-modal.html'
+        '/static/modals/status-story-modal.html',
+        '/static/modals/sync-modal.html'
     ];
 
     const responses = await Promise.all(templates.map(url => fetch(url)));

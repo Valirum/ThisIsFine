@@ -1,0 +1,18 @@
+<div id="syncModal" class="modal">
+  <div class="modal-content">
+    <span class="close" data-modal="syncModal">&times;</span>
+    <h3>Синхронизация устройств</h3>
+
+    <h4>Добавить устройство</h4>
+    <div class="sync-add-form">
+      <input type="text" id="syncPeerAddress" placeholder="IP:порт (например, 192.168.1.10:5000)">
+      <button class="btn" id="addPeerBtn">Добавить</button>
+    </div>
+    <div id="syncAddStatus" style="margin: 0.5rem 0; font-size: 0.9em; color: #ff9999;"></div>
+
+    <h4>Известные устройства</h4>
+    <div id="peersList"></div>
+
+    <div id="syncStatus" style="margin-top: 1rem; font-size: 0.9em; color: #8aff8a;"></div>
+  </div>
+</div>

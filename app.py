@@ -1,9 +1,13 @@
+import uuid
+import argparse
 from flask import Flask, request, jsonify
-from models import db, Task, Tag, TaskStatusLog
+from models import db, Task, Tag, TaskStatusLog, PeerDevice
 from datetime import datetime, timezone
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from dateutil import parser
+import requests
 
 # === Импорт автоподбора тегов ===
 from tag_suggester import TagSuggester
@@ -121,6 +125,14 @@ def create_task():
         except ValueError:
             pass
 
+    task_uuid = data.get('uuid')
+    if task_uuid:
+        # Проверяем, не существует ли уже задача с таким UUID
+        if Task.query.filter_by(uuid=task_uuid).first():
+            return jsonify({"error": "Task with this UUID already exists"}), 409
+    else:
+        task_uuid = str(uuid.uuid4())
+
     # Внутри create_task()
     tag_names = data.get('tags', [])
     if not isinstance(tag_names, list):
@@ -141,6 +153,7 @@ def create_task():
 
     # Создаём задачу
     task = Task(
+        uuid=task_uuid,
         title=data['title'],
         note=data.get('note'),
         planned_at=planned_at,
@@ -149,7 +162,8 @@ def create_task():
         duration_seconds=int(data.get('duration_seconds', 0)),
         priority=data.get('priority', 'routine'),
         recurrence_seconds=int(data.get('recurrence_seconds', 0)),
-        dependencies=data.get('dependencies', [])
+        dependencies=data.get('dependencies', []),
+        status=data.get('status', 'planned')
     )
 
     task.tags = tags  # SQLAlchemy сам обновит ассоциативную таблицу
@@ -235,6 +249,22 @@ def delete_task(task_id):
 def update_task(task_id):
     task = Task.query.get_or_404(task_id)
     data = request.get_json()
+
+    # Внутри /tasks/<id> PUT
+    if 'uuid' in data and data['uuid'] != task.uuid:
+        return jsonify({"error": "UUID cannot be changed"}), 400
+
+    # Обновляем updated_at вручную, если пришёл более свежий timestamp
+    if 'updated_at' in data:
+        remote_updated = parser.isoparse(data['updated_at'])
+        if remote_updated.tzinfo is None:
+            remote_updated = remote_updated.replace(tzinfo=timezone.utc)
+        if remote_updated > task.updated_at:
+            task.updated_at = remote_updated
+        else:
+            # Локальная версия новее — пропускаем обновление?
+            # Но если пользователь явно редактирует — всё равно обновляем
+            pass
 
     # Обновляем все поля, включая status
     if 'title' in data:
@@ -322,6 +352,84 @@ def update_task(task_id):
     return jsonify(task.to_dict()), 200
 
 
+def create_task_from_dict(data):
+    # Создаём/получаем теги
+    tag_names = data.get('tags', [])
+    tags = []
+    for name in tag_names:
+        name = name.strip().lower()
+        if not name: continue
+        tag = Tag.query.filter_by(name=name).first()
+        if not tag:
+            tag = Tag(name=name)
+            db.session.add(tag)
+        tags.append(tag)
+
+    task = Task(
+        uuid=data['uuid'],
+        title=data['title'],
+        note=data.get('note'),
+        priority=data.get('priority', 'routine'),
+        status=data.get('status', 'planned'),
+        duration_seconds=int(data.get('duration_seconds', 0)),
+        recurrence_seconds=int(data.get('recurrence_seconds', 0)),
+        dependencies=data.get('dependencies', []),
+        updated_at=datetime.fromisoformat(data['updated_at'].replace('Z', '+00:00').replace('+00:00', '+00:00')),
+        completed_at=datetime.fromisoformat(data['completed_at'].replace('Z', '+00:00')) if data.get('completed_at') else None
+    )
+
+    # Дедлайны
+    deadlines = data.get('deadlines', {})
+    task.due_at = datetime.fromisoformat(deadlines['due_at'].replace('Z', '+00:00'))
+    task.planned_at = datetime.fromisoformat(deadlines['planned_at'].replace('Z', '+00:00')) if deadlines.get('planned_at') else None
+    task.grace_end = datetime.fromisoformat(deadlines['grace_end'].replace('Z', '+00:00')) if deadlines.get('grace_end') else None
+
+    task.tags = tags
+    db.session.add(task)
+    return task
+
+
+def update_task_from_dict(task, data):
+    task.title = data['title']
+    task.note = data.get('note')
+    task.priority = data.get('priority', task.priority)
+    task.status = data.get('status', task.status)
+    task.duration_seconds = int(data.get('duration_seconds', task.duration_seconds))
+    task.recurrence_seconds = int(data.get('recurrence_seconds', task.recurrence_seconds))
+    task.dependencies = data.get('dependencies', task.dependencies)
+
+    # Временные метки
+    remote_updated = parser.isoparse(data['updated_at'])
+    if remote_updated.tzinfo is None:
+        remote_updated = remote_updated.replace(tzinfo=timezone.utc)
+
+    task.updated_at = remote_updated
+
+    if data.get('completed_at'):
+        task.completed_at = datetime.fromisoformat(data['completed_at'].replace('Z', '+00:00'))
+    else:
+        task.completed_at = None
+
+    # Дедлайны
+    deadlines = data.get('deadlines', {})
+    task.due_at = datetime.fromisoformat(deadlines['due_at'].replace('Z', '+00:00'))
+    task.planned_at = datetime.fromisoformat(deadlines['planned_at'].replace('Z', '+00:00')) if deadlines.get('planned_at') else None
+    task.grace_end = datetime.fromisoformat(deadlines['grace_end'].replace('Z', '+00:00')) if deadlines.get('grace_end') else None
+
+    # Теги
+    tag_names = data.get('tags', [])
+    tags = []
+    for name in tag_names:
+        name = name.strip().lower()
+        if not name: continue
+        tag = Tag.query.filter_by(name=name).first()
+        if not tag:
+            tag = Tag(name=name)
+            db.session.add(tag)
+        tags.append(tag)
+    task.tags = tags
+
+
 @app.route('/')
 def calendar_view():
     return app.send_static_file('index.html')
@@ -336,7 +444,91 @@ def get_task_status_history(task_id):
     } for log in logs]), 200
 
 
+@app.route('/sync/handshake', methods=['GET'])
+def sync_handshake():
+    return jsonify({
+        "name": os.getenv('DEVICE_NAME', 'ThisIsFine'),
+        "device_id": os.getenv('DEVICE_ID') or str(uuid.uuid4()),
+        "version": "0.1",
+        "address": request.host  # например, "192.168.1.5:5000"
+    })
+
+@app.route('/sync/peers', methods=['GET'])
+def list_peers():
+    peers = PeerDevice.query.all()
+    return jsonify([{
+        'id': p.id,
+        'name': p.name,
+        'address': p.address,
+        'device_id': p.device_id,
+        'last_sync': p.last_sync.isoformat() + 'Z' if p.last_sync else None
+    } for p in peers])
+
+@app.route('/sync/peers', methods=['POST'])
+def add_peer():
+    data = request.get_json()
+    addr = data.get('address')
+    if not addr or ':' not in addr:
+        return jsonify({"error": "Неверный адрес"}), 400
+
+    try:
+        res = requests.get(f"http://{addr}/sync/handshake", timeout=3)
+        if res.status_code != 200:
+            return jsonify({"error": "Устройство не отвечает"}), 400
+        info = res.json()
+        # Проверяем, нет ли уже такого device_id
+        if PeerDevice.query.filter_by(device_id=info['device_id']).first():
+            return jsonify({"error": "Устройство уже добавлено"}), 409
+
+        peer = PeerDevice(
+            name=info['name'],
+            address=addr,
+            device_id=info['device_id']
+        )
+        db.session.add(peer)
+        db.session.commit()
+        return jsonify({"status": "ok", "peer": peer.to_dict()}), 201
+    except Exception as e:
+        return jsonify({"error": f"Ошибка: {str(e)}"}), 500
+
+@app.route('/sync/tasks', methods=['GET'])
+def get_all_tasks_for_sync():
+    tasks = Task.query.all()
+    return jsonify([t.to_dict() for t in tasks])
+
+@app.route('/sync/tasks', methods=['POST'])
+def receive_sync_tasks():
+    data = request.get_json()
+    for task_data in data:
+        existing = Task.query.filter_by(uuid=task_data['uuid']).first()
+        if existing:
+            local_updated = existing.updated_at
+            if local_updated.tzinfo is None:
+                local_updated = local_updated.replace(tzinfo=timezone.utc)
+            remote_updated = parser.isoparse(task_data['updated_at'])
+            if remote_updated.tzinfo is None:
+                remote_updated = remote_updated.replace(tzinfo=timezone.utc)
+            print(remote_updated, local_updated)
+            if remote_updated > local_updated:
+                update_task_from_dict(existing, task_data)
+        else:
+            create_task_from_dict(task_data)
+    db.session.commit()
+    return jsonify({"status": "ok"}), 200
+
+@app.route('/sync/peers/<int:peer_id>', methods=['DELETE'])
+def delete_peer(peer_id):
+    peer = PeerDevice.query.get_or_404(peer_id)
+    db.session.delete(peer)
+    db.session.commit()
+    return jsonify({"status": "ok"}), 200
+
+
 if __name__ == '__main__':
     # Убедимся, что папка instance существует
+    arg_parser = argparse.ArgumentParser(description='Запуск благословенного Flask-сервиса Омниссии')
+    arg_parser.add_argument('--port', type=int, default=5000, help='Порт для священного прослушивания')
+    args = arg_parser.parse_args()
+
     os.makedirs('instance', exist_ok=True)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=args.port)

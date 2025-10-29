@@ -738,9 +738,24 @@ select,
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
   transition: transform 0.1s ease, opacity 0.2s;
 }
+
 .suggested-tag-badge:hover {
   transform: scale(1.05);
   opacity: 0.9;
+}
+
+.sync-toggle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+}
+.sync-toggle .btn {
+  min-width: auto;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9em;
 }
 
 @keyframes pulse-overdue-text {

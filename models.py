@@ -1,3 +1,4 @@
+import uuid
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
 from random import randint
@@ -16,7 +17,7 @@ from random import randint
 def get_random_bright_hex_color():
     r = randint(0, 128)
     g = randint(0, 128)
-    b = randint(0, 128)
+    b = randint(64, 128)
     return f"#{r:02x}{g:02x}{b:02x}"
 
 class Tag(db.Model):
@@ -46,6 +47,7 @@ class Task(db.Model):
     __tablename__ = 'tasks'
 
     id = db.Column(db.Integer, primary_key=True)
+    uuid = db.Column(db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
     title = db.Column(db.String(255), nullable=False)
     note = db.Column(db.Text, nullable=True)
     planned_at = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -54,9 +56,10 @@ class Task(db.Model):
     duration_seconds = db.Column(db.Integer, nullable=False, default=0)
     priority = db.Column(db.String(20), nullable=False, default='routine')
     recurrence_seconds = db.Column(db.Integer, nullable=False, default=0)
-    dependencies = db.Column(db.JSON, nullable=True, default=list)
-    status = db.Column(db.String(20), nullable=False, default='planned')  # planned | inProgress | done | overdue
+    dependencies = db.Column(db.JSON, nullable=True, default=list)  # ← теперь UUID-строки!
+    status = db.Column(db.String(20), nullable=False, default='planned')
     completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Связь с тегами
     tags = db.relationship(
@@ -68,10 +71,11 @@ class Task(db.Model):
 
     def to_dict(self):
         def format_dt(dt):
-            return dt.isoformat()+'Z' if dt else None
+            return dt.isoformat() + 'Z' if dt else None
 
         return {
             "id": self.id,
+            "uuid": self.uuid,
             "title": self.title,
             "note": self.note,
             "deadlines": {
@@ -85,5 +89,16 @@ class Task(db.Model):
             "recurrence_seconds": self.recurrence_seconds,
             "dependencies": self.dependencies or [],
             "status": self.status,
-            "completed_at": format_dt(self.completed_at)
+            "completed_at": format_dt(self.completed_at),
+            "updated_at": format_dt(self.updated_at)
         }
+
+
+class PeerDevice(db.Model):
+    __tablename__ = 'peer_devices'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)          # человекочитаемое имя
+    address = db.Column(db.String(50), nullable=False)        # "192.168.1.10:5000"
+    device_id = db.Column(db.String(36), nullable=False)      # уникальный ID узла
+    last_sync = db.Column(db.DateTime(timezone=True), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
