@@ -279,7 +279,6 @@ def update_task(task_id):
     if 'status' in data and data['status'] != task.status:
         new_status = data['status']
         if new_status == 'done' and task.status != 'done':
-            print(datetime.now(timezone.utc))
             task.completed_at = datetime.now(timezone.utc)
         elif new_status != 'done':
             task.corrected_at = None
@@ -352,7 +351,6 @@ def update_task(task_id):
 
     return jsonify(task.to_dict()), 200
 
-
 def create_task_from_dict(data):
     # Создаём/получаем теги
     tag_names = data.get('tags', [])
@@ -388,7 +386,6 @@ def create_task_from_dict(data):
     task.tags = tags
     db.session.add(task)
     return task
-
 
 def update_task_from_dict(task, data):
     task.title = data['title']
@@ -430,11 +427,9 @@ def update_task_from_dict(task, data):
         tags.append(tag)
     task.tags = tags
 
-
 @app.route('/')
 def calendar_view():
     return app.send_static_file('index.html')
-
 
 @app.route('/tasks/<int:task_id>/status-history', methods=['GET'])
 def get_task_status_history(task_id):
@@ -444,7 +439,6 @@ def get_task_status_history(task_id):
         "status": log.status,
         "changed_at": log.changed_at.isoformat() + 'Z' if log.changed_at else None
     } for log in logs]), 200
-
 
 @app.route('/sync/handshake', methods=['GET'])
 def sync_handshake():
@@ -606,17 +600,28 @@ def sync_with_peer():
         ).json()
 
         # 2. Отправляем свои задачи туда
-        local_tasks = [t.to_dict() for t in Task.query.all()]
+        # СТАЛО (ПРАВИЛЬНО):
+        local_sync_data = []
+        for task in Task.query.all():
+            logs = TaskStatusLog.query.filter_by(task_uuid=task.uuid).all()
+            local_sync_data.append({
+                "task": task.to_dict(),
+                "logs": [{
+                    "status": log.status,
+                    "changed_at": log.changed_at.isoformat() + 'Z'
+                } for log in logs]
+            })
+
         requests.post(
             f"{remote_url}/sync/tasks",
-            json=local_tasks,
+            json=local_sync_data,
             headers={"X-Sync-Token": os.getenv('SYNC_TOKEN')},
             timeout=10
         )
 
+
         # 3. Сливаем полученные задачи локально (как в receive_sync_tasks)
         for task_data in remote_tasks:
-            print(task_data)
             existing = Task.query.filter_by(uuid=task_data['task']['uuid']).first()
             if existing:
                 local_updated = existing.updated_at
