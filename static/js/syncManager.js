@@ -72,7 +72,7 @@ export function setupSyncHandlers() {
                 } else {
                     const err = await res.json();
                     statusEl.textContent = `❌ Ошибка: ${err.error || 'неизвестно'}`;
-                    consol.log(err.error);
+                    console.log(err.error);
                 }
             } catch (err) {
                 statusEl.textContent = `💥 Сбой сети: ${err.message}`;

@@ -493,7 +493,6 @@ def add_peer():
         return jsonify({"error": f"Ошибка: {str(e)}"}), 500
 
 @app.route('/sync/tasks', methods=['GET'])
-@app.route('/sync/tasks', methods=['GET'])
 def get_all_tasks_for_sync():
     tasks = Task.query.all()
     result = []
