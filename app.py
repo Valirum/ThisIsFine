@@ -234,7 +234,6 @@ def get_tasks():
     tasks = query.all()
     return jsonify([t.to_dict() for t in tasks]), 200
 
-
 # УДАЛЕНИЕ задачи
 @app.route('/tasks/<int:task_id>', methods=['DELETE'])
 def delete_task(task_id):
@@ -243,9 +242,6 @@ def delete_task(task_id):
     db.session.commit()
     return jsonify({"message": "Задача уничтожена во славу Омниссии"}), 200
 
-
-# ОБНОВЛЕНИЕ статуса (или полное обновление)
-# Уже существующий PUT /tasks/<id> расширяем поддержкой status
 @app.route('/tasks/<int:task_id>', methods=['PUT'])
 def update_task(task_id):
     task = Task.query.get_or_404(task_id)
@@ -540,12 +536,12 @@ def receive_sync_tasks():
         # === 2. Слияние логов (только если задача создана/обновлена) ===
         if task:
             # Получаем существующие логи как множество ключей (status + changed_at до секунды)
-            existing_log_keys = set()
-            for log in TaskStatusLog.query.filter_by(task_uuid=task.uuid).all():
-                key = (log.status, log.changed_at.replace(microsecond=0))
-                existing_log_keys.add(key)
+            # Получаем существующие логи как множество ключей (status + changed_at до секунды)
+            existing_log_keys = {
+                (log.status, log.changed_at.replace(microsecond=0))
+                for log in TaskStatusLog.query.filter_by(task_uuid=task.uuid).all()
+            }
 
-            # Добавляем новые логи
             for log_entry in logs_list:
                 try:
                     status = log_entry.get("status")
@@ -561,12 +557,12 @@ def receive_sync_tasks():
                         new_log = TaskStatusLog(
                             task_uuid=task.uuid,
                             status=status,
-                            changed_at=changed_at
+                            changed_at=changed_at_sec  # ← сохраняем без микросекунд!
                         )
                         db.session.add(new_log)
                         existing_log_keys.add(log_key)  # предотвращаем дубли в рамках одного запроса
                 except Exception:
-                    continue  # пропускаем битые логи
+                    continue
 
     db.session.commit()
     return jsonify({"status": "ok"}), 200

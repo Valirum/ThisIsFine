@@ -39,7 +39,11 @@ class TaskStatusLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     task_uuid = db.Column(db.String(36), db.ForeignKey('tasks.uuid'), nullable=False)
     status = db.Column(db.String(20), nullable=False)  # planned, inProgress, done...
-    changed_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    changed_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc).replace(microsecond=0))
+
+    __table_args__ = (
+        db.UniqueConstraint('task_uuid', 'status', 'changed_at', name='uq_task_status_changed'),
+    )
 
     def to_dict(self):
         return {
