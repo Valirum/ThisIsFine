@@ -220,6 +220,20 @@ function populateEditForm(task) {
   attachToggle(graceCheckbox, gracePickerDiv);
 }
 
+async function updateEditTagSuggestions() {
+    const title = document.getElementById('taskTitle')?.value || '';
+    const note = document.getElementById('taskNote')?.value || '';
+    const tags = await suggestTagsWithColors(title, note);
+    const suggestionsEl = document.getElementById('editTagSuggestions');
+    if (suggestionsEl) {
+        suggestionsEl.innerHTML = tags.length
+            ? `Предложить: ${tags.map(t =>
+                `<span class="suggested-tag-badge" style="background-color:${t.color}; color:white;">${t.name}</span>`
+              ).join(', ')}`
+            : '';
+    }
+}
+
 function showEditTask(task) {
     populateEditForm(task);
     document.getElementById('taskId').value = task.id;
@@ -237,33 +251,35 @@ function showEditTask(task) {
     document.getElementById('taskTitle')?.addEventListener('input', debounce(updateEditTagSuggestions, 500));
     document.getElementById('taskNote')?.addEventListener('input', debounce(updateEditTagSuggestions, 500));
 
-    function updateEditTagSuggestions() {
-        const title = document.getElementById('taskTitle')?.value || '';
-        const note = document.getElementById('taskNote')?.value || '';
-        suggestTags(title, note).then(tags => {
-            const suggestionsEl = document.getElementById('editTagSuggestions');
-            if (suggestionsEl) {
-                suggestionsEl.innerHTML = tags.length
-                    ? `Предложить: ${tags.map(t => `<a href="#" class="suggested-tag">${t}</a>`).join(', ')}`
-                    : '';
-            }
-        });
+}
+
+async function updateTagSuggestions() {
+    const title = document.getElementById('newTaskTitle')?.value || '';
+    const note = document.getElementById('newTaskNote')?.value || '';
+    const tags = await suggestTagsWithColors(title, note);
+    const suggestionsEl = document.getElementById('tagSuggestions');
+    if (suggestionsEl) {
+        suggestionsEl.innerHTML = tags.length
+            ? `Предложить: ${tags.map(t =>
+                `<span class="suggested-tag-badge" style="background-color:${t.color}; color:white;">${t.name}</span>`
+              ).join(', ')}`
+            : '';
     }
 }
 
-function updateTagSuggestions() {
-        const title = document.getElementById('newTaskTitle')?.value || '';
-        const note = document.getElementById('newTaskNote')?.value || '';
-        suggestTags(title, note).then(tags => {
-            // Показываем подсказку под полем тегов
-            const suggestionsEl = document.getElementById('tagSuggestions');
-            if (suggestionsEl) {
-                suggestionsEl.innerHTML = tags.length
-                    ? `Предложить: ${tags.map(t => `<a href="#" class="suggested-tag">${t}</a>`).join(', ')}`
-                    : '';
-            }
-        });
+export async function suggestTagsWithColors(title, note) {
+    const tags = await suggestTags(title, note); // существующая функция
+    const tagColorMap = {};
+    if (window.allTags) {
+        for (const t of window.allTags) {
+            tagColorMap[t.name] = t.color;
+        }
     }
+    return tags.map(name => ({
+        name,
+        color: tagColorMap[name] || '#4a4a8a' // fallback
+    }));
+}
 
 function debounce(func, wait) {
     let timeout;
@@ -320,15 +336,16 @@ function showViewTask(task) {
     statusEl.className = `priority-badge ${status.toLowerCase()}`;
 
   // Теги
-  const tagsEl = document.getElementById('viewTaskTags');
-  const tags = Array.isArray(task.tags) ? task.tags : [];
-  if (tags.length > 0) {
-    tagsEl.innerHTML = tags.map(tag =>
-      `<span class="tag-item">${tag}</span>`
-    ).join('');
-  } else {
-    tagsEl.innerHTML = '<span class="tag-item">—</span>';
-  }
+    const tagsEl = document.getElementById('viewTaskTags');
+    const tags = Array.isArray(task.tags) ? task.tags : [];
+    if (tags.length > 0) {
+        tagsEl.innerHTML = tags.map(tagName => {
+            const tagObj = window.allTags?.find(t => t.name === tagName) || { color: '#4a4a8a' };
+            return `<span class="tag-item" style="background-color: ${tagObj.color}; color: white;">${tagName}</span>`;
+        }).join('');
+    } else {
+        tagsEl.innerHTML = '<span class="tag-item">—</span>';
+    }
 
   // Срок выполнения (due_at) — обязателен по модели, но на всякий случай
   const dueAt = task.deadlines?.due_at;
@@ -399,10 +416,44 @@ function setupGlobalHandlers() {
         btn.addEventListener('click', e => setPeriod(e.target.dataset.period));
     });
 
+    // Внутри setupGlobalHandlers()
+    document.getElementById('showStatusHistoryBtn')?.addEventListener('click', async () => {
+        if (!currentViewedTask) return;
+
+        const taskId = currentViewedTask.id;
+        document.getElementById('historyTaskId').textContent = `#${taskId}`;
+
+        try {
+            const res = await fetch(`/tasks/${taskId}/status-history`);
+            const history = await res.json();
+
+            const listEl = document.getElementById('statusHistoryList');
+            if (history.length === 0) {
+                listEl.innerHTML = '<em>Нет записей в истории</em>';
+            } else {
+                listEl.innerHTML = history.map(entry => {
+                    const timeStr = new Date(entry.changed_at).toLocaleString('ru-RU');
+                    const statusClass = `status-${entry.status.toLowerCase()}`;
+                    const statusLabel = entry.status.charAt(0).toUpperCase() + entry.status.slice(1);
+                    return `
+                        <div class="status-history-entry ${statusClass}">
+                            <span>${statusLabel}</span>
+                            <span class="status-history-time">${timeStr}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('statusHistoryModal').style.display = 'block';
+        } catch (err) {
+            alert('Ошибка загрузки истории: ' + err.message);
+        }
+    });
+
     // Обработчик кликов по подсказкам в форме редактирования
     // Единый глобальный обработчик для подсказок тегов
     document.addEventListener('click', (e) => {
-        if (!e.target.classList.contains('suggested-tag')) return;
+        if (!e.target.classList.contains('suggested-tag-badge')) return;
 
         e.preventDefault();
 
@@ -529,19 +580,21 @@ function setupGlobalHandlers() {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await loadModals();
+
+        // 🔥 ЗАГРУЖАЕМ ТЕГИ ДО ВСЕГО ОСТАЛЬНОГО 🔥
+        const tagsRes = await fetch('/tags');
+        window.allTags = await tagsRes.json();
+        console.log('Загружено тегов:', window.allTags.length); // для отладки
+
         setupFormHandlers(() => renderCalendar());
         setupGlobalHandlers();
-        // При инициализации:
+
         const savedPeriod = localStorage.getItem('calendarPeriod') || 'week';
         let savedStart = localStorage.getItem('customPeriodStart');
         let savedEnd = localStorage.getItem('customPeriodEnd');
-
-        // Преобразуем строки в Date (если есть)
         if (savedStart) savedStart = new Date(savedStart);
         if (savedEnd) savedEnd = new Date(savedEnd);
-
         setPeriod(savedPeriod, savedStart, savedEnd);
-
     } catch (err) {
         console.error('Ошибка инициализации календаря:', err);
         alert('Не удалось загрузить интерфейс календаря. См. консоль.');

@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
+from random import randint
 
 db = SQLAlchemy()
 
@@ -10,10 +11,18 @@ task_tag = db.Table(
     db.Column('tag_name', db.String(50), db.ForeignKey('tags.name'), primary_key=True)
 )
 
+from random import randint
+
+def get_random_bright_hex_color():
+    r = randint(0, 128)
+    g = randint(0, 128)
+    b = randint(0, 128)
+    return f"#{r:02x}{g:02x}{b:02x}"
+
 class Tag(db.Model):
     __tablename__ = 'tags'
     name = db.Column(db.String(50), primary_key=True)
-    color = db.Column(db.String(7), nullable=False, default='#4a4a8a')  # HEX, например: #ff5555
+    color = db.Column(db.String(7), nullable=False, default=get_random_bright_hex_color)  # HEX, например: #ff5555
     # icon = db.Column(db.String(50), nullable=True)  # можно добавить позже
 
     def __repr__(self):
@@ -60,7 +69,7 @@ class Task(db.Model):
     def to_dict(self):
         def format_dt(dt):
             return dt.isoformat()+'Z' if dt else None
-        print(self.completed_at, format_dt(self.completed_at), self.due_at.isoformat())
+
         return {
             "id": self.id,
             "title": self.title,

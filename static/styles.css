@@ -141,7 +141,7 @@ h1 {
 
 .modal-content {
   background: #16213e;
-  margin: 10vh auto;
+  margin: auto;
   padding: 1.2rem;
   width: 95%;
   max-width: 500px;
@@ -151,6 +151,11 @@ h1 {
   display: flex;
   flex-direction: column;
   position: relative;
+  /* Центрирование внутри .modal */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 /* === Форма задачи === */
@@ -697,6 +702,45 @@ select,
   outline: none;
   border-color: #8a8aff;
   box-shadow: 0 0 0 2px rgba(138, 138, 255, 0.2);
+}
+
+/* === История статусов === */
+.status-history-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.3rem;
+  background: var(--bg-panel);
+  border-radius: 4px;
+  border-left: 3px solid #666;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+.status-history-entry.status-planned     { border-left-color: #8aff8a; }
+.status-history-entry.status-inprogress  { border-left-color: #ffdd8a; }
+.status-history-entry.status-done        { border-left-color: #8aff8a; opacity: 0.9; }
+.status-history-entry.status-overdue     { border-left-color: #ff8a8a; }
+
+.status-history-time {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.suggested-tag-badge {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: bold;
+  margin-right: 0.3rem;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s ease, opacity 0.2s;
+}
+.suggested-tag-badge:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
 }
 
 @keyframes pulse-overdue-text {

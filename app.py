@@ -159,6 +159,7 @@ def create_task():
 
     log_entry = TaskStatusLog(task_id=task.id, status="planned")
     db.session.add(log_entry)
+    db.session.commit()
 
     task_title = task.title
     task_note = task.note if task.note else ''
@@ -324,6 +325,15 @@ def update_task(task_id):
 @app.route('/')
 def calendar_view():
     return app.send_static_file('index.html')
+
+
+@app.route('/tasks/<int:task_id>/status-history', methods=['GET'])
+def get_task_status_history(task_id):
+    logs = TaskStatusLog.query.filter_by(task_id=task_id).order_by(TaskStatusLog.changed_at).all()
+    return jsonify([{
+        "status": log.status,
+        "changed_at": log.changed_at.isoformat() + 'Z' if log.changed_at else None
+    } for log in logs]), 200
 
 
 if __name__ == '__main__':
