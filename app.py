@@ -171,7 +171,7 @@ def create_task():
     db.session.add(task)
     db.session.commit()
 
-    log_entry = TaskStatusLog(task_id=task.id, status="planned")
+    log_entry = TaskStatusLog(task_uuid=task.uuid, status="planned")
     db.session.add(log_entry)
     db.session.commit()
 
@@ -283,7 +283,7 @@ def update_task(task_id):
         elif new_status != 'done':
             task.corrected_at = None
         task.status = new_status  # ← один раз
-        log_entry = TaskStatusLog(task_id=task.id, status=new_status)
+        log_entry = TaskStatusLog(task_uuid=task.uuid, status=new_status)
         db.session.add(log_entry)
 
     # Числовые поля
@@ -437,7 +437,8 @@ def calendar_view():
 
 @app.route('/tasks/<int:task_id>/status-history', methods=['GET'])
 def get_task_status_history(task_id):
-    logs = TaskStatusLog.query.filter_by(task_id=task_id).order_by(TaskStatusLog.changed_at).all()
+    task = Task.query.get_or_404(task_id)
+    logs = TaskStatusLog.query.filter_by(task_uuid=task.uuid).order_by(TaskStatusLog.changed_at).all()
     return jsonify([{
         "status": log.status,
         "changed_at": log.changed_at.isoformat() + 'Z' if log.changed_at else None
@@ -492,27 +493,89 @@ def add_peer():
         return jsonify({"error": f"Ошибка: {str(e)}"}), 500
 
 @app.route('/sync/tasks', methods=['GET'])
+@app.route('/sync/tasks', methods=['GET'])
 def get_all_tasks_for_sync():
     tasks = Task.query.all()
-    return jsonify([t.to_dict() for t in tasks])
+    result = []
+    for task in tasks:
+        logs = TaskStatusLog.query.filter_by(task_uuid=task.uuid).all()
+        result.append({
+            "task": task.to_dict(),
+            "logs": [{
+                "status": log.status,
+                "changed_at": log.changed_at.isoformat() + 'Z'
+            } for log in logs]
+        })
+    return jsonify(result)
 
 @app.route('/sync/tasks', methods=['POST'])
 def receive_sync_tasks():
+    if request.headers.get('X-Sync-Token') != os.getenv('SYNC_TOKEN'):
+        return jsonify({"error": "Access denied"}), 403
+
     data = request.get_json()
-    for task_data in data:
+    if not isinstance(data, list):
+        return jsonify({"error": "Expected list of {task, logs}"}), 400
+
+    for item in data:
+        task_data = item.get("task")
+        logs_data = item.get("logs", [])
+
+        if not task_data or 'uuid' not in task_data:
+            continue  # пропускаем некорректные записи
+
         existing = Task.query.filter_by(uuid=task_data['uuid']).first()
+
         if existing:
+            # Сравниваем updated_at
             local_updated = existing.updated_at
             if local_updated.tzinfo is None:
                 local_updated = local_updated.replace(tzinfo=timezone.utc)
             remote_updated = parser.isoparse(task_data['updated_at'])
             if remote_updated.tzinfo is None:
                 remote_updated = remote_updated.replace(tzinfo=timezone.utc)
-            print(remote_updated, local_updated)
+
             if remote_updated > local_updated:
                 update_task_from_dict(existing, task_data)
+                task = existing
+            else:
+                task = existing  # всё равно нужно для логов
         else:
-            create_task_from_dict(task_data)
+            task = create_task_from_dict(task_data)
+
+        # === Синхронизация логов ===
+        if task:
+            # Получаем существующие логи как множество ключей (status + changed_at)
+            existing_logs = set()
+            for log in TaskStatusLog.query.filter_by(task_uuid=task.uuid).all():
+                key = (log.status, log.changed_at.replace(microsecond=0))  # точность до секунды
+                existing_logs.add(key)
+
+            # Добавляем новые логи
+            for log_entry in logs_data:
+                try:
+                    status = log_entry.get("status")
+                    changed_at_str = log_entry.get("changed_at")
+                    if not status or not changed_at_str:
+                        continue
+                    changed_at = parser.isoparse(changed_at_str)
+                    if changed_at.tzinfo is None:
+                        changed_at = changed_at.replace(tzinfo=timezone.utc)
+                    # Округляем до секунды для сравнения
+                    changed_at_sec = changed_at.replace(microsecond=0)
+                    log_key = (status, changed_at_sec)
+                    if log_key not in existing_logs:
+                        new_log = TaskStatusLog(
+                            task_uuid=task.uuid,
+                            status=status,
+                            changed_at=changed_at
+                        )
+                        db.session.add(new_log)
+                        existing_logs.add(log_key)  # предотвращаем дубли в рамках одного запроса
+                except Exception as e:
+                    # Лог можно пропустить — задача важнее
+                    continue
+
     db.session.commit()
     return jsonify({"status": "ok"}), 200
 

@@ -37,7 +37,7 @@ class Tag(db.Model):
 class TaskStatusLog(db.Model):
     __tablename__ = 'task_status_log'
     id = db.Column(db.Integer, primary_key=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
+    task_uuid = db.Column(db.String(36), db.ForeignKey('tasks.uuid'), nullable=False)
     status = db.Column(db.String(20), nullable=False)  # planned, inProgress, done...
     changed_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
