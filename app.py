@@ -559,7 +559,7 @@ def sync_with_peer():
         )
 
 
-        # 3. Сливаем полученные задачи локально (как в receive_sync_tasks)
+        # 3. Сливаем полученные задачи локально
         merge_sync_data(remote_tasks)
 
         # 4. Обновляем last_sync
@@ -577,9 +577,12 @@ def sync_with_peer():
         return jsonify({"error": f"Sync failed: {str(e)}\n{traceback.format_exc()}"}), 500
 
 
-def merge_sync_data(sync_payload):
-    """Принимает список [{task: ..., logs: [...]}, ...] и сливает с локальной БД"""
-    for item in sync_payload:
+def merge_sync_data(sync_data):
+    """
+    Принимает список { "task": ..., "logs": [...] }
+    и сливает с локальной БД.
+    """
+    for item in sync_data:
         task_dict = item.get("task")
         logs_list = item.get("logs", [])
 
@@ -619,8 +622,8 @@ def merge_sync_data(sync_payload):
                     changed_at = parser.isoparse(changed_at_str)
                     if changed_at.tzinfo is None:
                         changed_at = changed_at.replace(tzinfo=timezone.utc)
-                    changed_at_sec = changed_at.replace(microsecond=0)
-                    log_key = (status, changed_at_sec)
+                    changed_at = changed_at.replace(microsecond=0)
+                    log_key = (status, changed_at)
                     if log_key not in existing_log_keys:
                         new_log = TaskStatusLog(
                             task_uuid=task.uuid,
