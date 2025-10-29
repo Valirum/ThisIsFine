@@ -3,7 +3,7 @@ import re
 import math
 from collections import defaultdict, Counter
 from typing import List, Dict, Set, Tuple
-import pymorphy2
+import pymorphy3
 
 # === 1. Генерация обучающего набора (реальные данные можно заменить позже) ===
 def generate_sample_tasks() -> List[Dict]:
@@ -19,6 +19,7 @@ def generate_sample_tasks() -> List[Dict]:
         {"text": "Починить скрипящую дверь", "tags": ["ремонт", "дом"]},
         {"text": "Организовать хранение инструментов в гараже", "tags": ["организация", "дом"]},
         {"text": "Проверить герметичность окон перед зимой", "tags": ["дом", "подготовка"]},
+        {"text": "Убраться в комнате", "tags": ["дом", "уборка"]},
 
         # === Здоровье и тело ===
         {"text": "Измерить артериальное давление", "tags": ["здоровье", "контроль"]},
@@ -157,7 +158,7 @@ RUSSIAN_STOPWORDS = {
     'такой', 'им', 'более', 'всегда', 'конечно', 'всю', 'между'
 }
 
-_morph = pymorphy2.MorphAnalyzer()
+_morph = pymorphy3.MorphAnalyzer()
 
 def preprocess_text(text: str) -> List[str]:
     """Возвращает список лемм (не строку!), без стоп-слов."""
@@ -167,8 +168,11 @@ def preprocess_text(text: str) -> List[str]:
     for word in words:
         if len(word) < 2 or word in RUSSIAN_STOPWORDS:
             continue
+        if word[-2:] in ["сь", "ся"]:
+            word = word[:-2]
         parsed = _morph.parse(word)[0]
         lemmas.append(parsed.normal_form)
+
     return lemmas
 
 

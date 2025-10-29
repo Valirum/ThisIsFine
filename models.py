@@ -58,14 +58,17 @@ class Task(db.Model):
     )
 
     def to_dict(self):
+        def format_dt(dt):
+            return dt.isoformat()+'Z' if dt else None
+        print(format_dt(self.completed_at))
         return {
             "id": self.id,
             "title": self.title,
             "note": self.note,
             "deadlines": {
-                "planned_at": self.planned_at.isoformat() if self.planned_at else None,
-                "due_at": self.due_at.isoformat(),
-                "grace_end": self.grace_end.isoformat() if self.grace_end else None
+                "planned_at": format_dt(self.planned_at),
+                "due_at": format_dt(self.due_at),
+                "grace_end": format_dt(self.grace_end)
             },
             "duration_seconds": self.duration_seconds,
             "tags": [tag.name for tag in self.tags],
@@ -73,5 +76,5 @@ class Task(db.Model):
             "recurrence_seconds": self.recurrence_seconds,
             "dependencies": self.dependencies or [],
             "status": self.status,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None  # ← ДОБАВЛЕНО
+            "completed_at": format_dt(self.completed_at)
         }

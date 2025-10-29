@@ -8,6 +8,8 @@ function formatTime(dateStr) {
     if (!dateStr) return '';
     const dt = new Date(dateStr);
     if (isNaN(dt.getTime())) return '';
+    console.log(dateStr)
+    console.log(dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }))
     return dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); // "15:00"
 }
 

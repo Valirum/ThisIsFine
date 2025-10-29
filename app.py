@@ -249,6 +249,7 @@ def update_task(task_id):
     if 'status' in data and data['status'] != task.status:
         new_status = data['status']
         if new_status == 'done' and task.status != 'done':
+            print(datetime.now(timezone.utc))
             task.completed_at = datetime.now(timezone.utc)
         elif new_status != 'done':
             task.corrected_at = None
