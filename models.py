@@ -12,8 +12,6 @@ task_tag = db.Table(
     db.Column('tag_name', db.String(50), db.ForeignKey('tags.name'), primary_key=True)
 )
 
-from random import randint
-
 def get_random_bright_hex_color():
     r = randint(0, 128)
     g = randint(0, 128)
@@ -102,3 +100,16 @@ class PeerDevice(db.Model):
     device_id = db.Column(db.String(36), nullable=False)      # уникальный ID узла
     last_sync = db.Column(db.DateTime(timezone=True), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        def format_dt(dt):
+            return dt.isoformat() + 'Z' if dt else None
+
+        return {
+            'id': self.id,
+            'name': self.name,
+            'address': self.address,
+            'device_id': self.device_id,
+            'last_sync': format_dt(self.last_sync),
+            'created_at': format_dt(self.created_at)
+        }
