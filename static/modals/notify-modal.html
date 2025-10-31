@@ -1,0 +1,17 @@
+<div id="notifyModal" class="modal">
+  <div class="modal-content">
+    <span class="close" data-modal="notifyModal">&times;</span>
+    <h3>Уведомления</h3>
+    <p>Настройки Telegram-бота (данные хранятся в <code>.env</code>)</p>
+    <div class="notify-config">
+      <label>Токен бота:<br>
+        <input type="password" id="notifyBotToken" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" style="width: 100%;">
+      </label>
+      <label>Chat ID:<br>
+        <input type="text" id="notifyChatId" placeholder="123456789" style="width: 100%;">
+      </label>
+      <button class="btn" id="testNotifyBtn">Проверить подключение</button>
+      <div id="notifyStatus" style="margin-top: 0.5rem; font-size: 0.9em;"></div>
+    </div>
+  </div>
+</div>

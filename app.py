@@ -14,6 +14,22 @@ import traceback
 from tag_suggester import TagSuggester
 import threading
 
+import atexit
+import tempfile
+import os
+
+# Путь к временному env-файлу
+TMP_ENV_PATH = os.path.join(tempfile.gettempdir(), 'tif_notifier_tmp.env')
+
+def cleanup_tmp_env():
+    """Удаляет временный env-файл при завершении."""
+    if os.path.exists(TMP_ENV_PATH):
+        os.remove(TMP_ENV_PATH)
+        print(f"🧹 Временный файл {TMP_ENV_PATH} удалён.")
+
+# Регистрируем функцию очистки
+atexit.register(cleanup_tmp_env)
+
 # Глобальный экземпляр (с локом для потокобезопасности)
 suggester_lock = threading.Lock()
 tag_suggester = None
@@ -681,6 +697,62 @@ def merge_sync_data(sync_data):
                     continue
 
     db.session.commit()
+
+
+# Глобальное состояние (в памяти)
+TELEGRAM_CONFIG = {
+    "bot_token": os.getenv("TELEGRAM_BOT_TOKEN"),
+    "chat_id": os.getenv("TELEGRAM_CHAT_ID")
+}
+
+@app.route('/notify/config', methods=['GET'])
+def get_telegram_config():
+    return jsonify({
+        "bot_token": "●●●●●●●●" if TELEGRAM_CONFIG["bot_token"] else None,
+        "chat_id": TELEGRAM_CONFIG["chat_id"]
+    })
+
+@app.route('/notify/config', methods=['POST'])
+def set_telegram_config():
+    data = request.get_json()
+    bot_token = data.get("bot_token")
+    chat_id = data.get("chat_id")
+    if not bot_token or not chat_id:
+        return jsonify({"error": "Токен и Chat ID обязательны"}), 400
+
+    # Сохраняем в памяти (для теста)
+    global TELEGRAM_CONFIG
+    TELEGRAM_CONFIG["bot_token"] = bot_token
+    TELEGRAM_CONFIG["chat_id"] = chat_id
+
+    # Сохраняем во временный .env
+    try:
+        with open(TMP_ENV_PATH, 'w', encoding='utf-8') as f:
+            f.write(f"TELEGRAM_BOT_TOKEN={bot_token}\n")
+            f.write(f"TELEGRAM_CHAT_ID={chat_id}\n")
+            f.write(f"THISISFINE_URL={os.getenv('THISISFINE_URL', 'http://localhost:5000')}\n")
+        return jsonify({"status": "ok", "tmp_env": TMP_ENV_PATH})
+    except Exception as e:
+        return jsonify({"error": f"Не удалось записать tmp.env: {str(e)}"}), 500
+
+@app.route('/notify/test', methods=['POST'])
+def test_notify():
+    token = TELEGRAM_CONFIG["bot_token"]
+    chat_id = TELEGRAM_CONFIG["chat_id"]
+    if not token or not chat_id:
+        return jsonify({"error": "Настройки Telegram не заданы"}), 400
+    try:
+        res = requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": "✅ Тестовое сообщение от ThisIsFine!"},
+            timeout=10
+        )
+        if res.status_code == 200:
+            return jsonify({"status": "ok", "message": "Сообщение отправлено!\nДанные применяются в пределах сессии.\nЕсли вы хотите сделать токен и чат постоянными - впишите их в файл [tif.env].\nДля активации нотификатора запустите [notifier_bot.py]"})
+        else:
+            return jsonify({"error": f"Ошибка Telegram: {res.json().get('description', 'unknown')}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"Сбой сети: {str(e)}"}), 500
 
 
 if __name__ == '__main__':

@@ -21,6 +21,15 @@ from dotenv import load_dotenv
 
 load_dotenv("tif.env")
 
+# Попытка загрузить временный env от Flask
+import tempfile
+TMP_ENV_PATH = os.path.join(tempfile.gettempdir(), 'tif_notifier_tmp.env')
+if os.path.exists(TMP_ENV_PATH):
+    load_dotenv(TMP_ENV_PATH, override=True)
+    print(f"✅ Загружены настройки из временного файла: {TMP_ENV_PATH}")
+else:
+    print("ℹ️ Временный файл не найден, использую tif.env")
+
 # === Настройки ===
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")

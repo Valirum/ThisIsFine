@@ -9,6 +9,7 @@ import {
    getAddTaskPicker
  } from './modalManager.js';
 import { setupSyncHandlers } from './syncManager.js';
+import { setupNotifyHandlers } from './notifyManager.js';
 
 let currentStart, currentEnd;
 let currentViewedTask = null;
@@ -590,6 +591,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupFormHandlers(() => renderCalendar());
         setupGlobalHandlers();
         setupSyncHandlers();
+        setupNotifyHandlers();
 
         const savedPeriod = localStorage.getItem('calendarPeriod') || 'week';
         let savedStart = localStorage.getItem('customPeriodStart');

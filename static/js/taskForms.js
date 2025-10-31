@@ -180,6 +180,19 @@ export function setupFormHandlers(onTaskChange) {
     // Для формы создания
     document.getElementById('addPlannedAtEnabled')?.addEventListener('change', function() {
       document.getElementById('addPlannedAtDatetimePicker').style.display = this.checked ? 'block' : 'none';
+
+      const pickerDiv = document.getElementById('addPlannedAtDatetimePicker');
+        const presetsDiv = document.getElementById('addPlannedAtPresets'); // ← контейнер пресетов
+
+        if (this.checked) {
+            // Ручной ввод → показываем пикер, скрываем пресеты
+            pickerDiv.style.display = 'block';
+            if (presetsDiv) presetsDiv.style.display = 'none';
+        } else {
+            // Автоматический → скрываем пикер, показываем пресеты
+            pickerDiv.style.display = 'none';
+            if (presetsDiv) presetsDiv.style.display = 'flex'; // или 'block', но у вас flex
+        }
     });
 
     document.getElementById('addGraceEndEnabled')?.addEventListener('change', function() {
