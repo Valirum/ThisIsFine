@@ -591,6 +591,8 @@ def merge_sync_data(sync_data):
 
         existing = Task.query.filter_by(uuid=task_dict['uuid']).first()
 
+        task = None
+
         if existing:
             local_updated = existing.updated_at
             if local_updated.tzinfo is None:
@@ -606,6 +608,21 @@ def merge_sync_data(sync_data):
                 task = existing
         else:
             task = create_task_from_dict(task_dict)
+
+        # === Дообучение автоподбора тегов ===
+        if task and task.tags:
+            # Собираем данные ДО коммита (но после применения изменений)
+            text = f"{task.title} {task.note or ''}"
+            tags = [tag.name for tag in task.tags]
+
+            def update_suggester():
+                global tag_suggester
+                if tag_suggester is None:
+                    return
+                with suggester_lock:
+                    tag_suggester.add_task(text, tags)
+
+            threading.Thread(target=update_suggester, daemon=True).start()
 
         if task:
             existing_log_keys = set()
