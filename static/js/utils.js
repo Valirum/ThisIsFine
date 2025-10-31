@@ -8,7 +8,8 @@ export const PRIORITY_COLORS = {
 export const SOFT_BACKGROUNDS = {
     routine: '#2a2a2a',
     high: '#3a2e1f',
-    critical: '#3a1f1f'
+    critical: '#3a1f1f',
+    failed: '#1a0a1a'
 };
 
 export const PRIORITY_ORDER = { routine: 0, high: 1, critical: 2 };

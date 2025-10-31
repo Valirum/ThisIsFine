@@ -1,3 +1,6 @@
 *.sqlite
+*.env
+tif.env
 /venv
+/.venv
 /.idea

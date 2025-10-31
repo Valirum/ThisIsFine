@@ -18,17 +18,40 @@ import threading
 suggester_lock = threading.Lock()
 tag_suggester = None
 
-load_dotenv()
+load_dotenv("tif.env")
 
-# Создаём папку instance, если её нет
 BASE_DIR = Path(__file__).parent.resolve()
 INSTANCE_DIR = BASE_DIR / "instance"
-INSTANCE_DIR.mkdir(exist_ok=True)
 
-DATABASE_PATH = INSTANCE_DIR / "taskdb.sqlite"
+# Функция для освящения пути к базе данных
+def ensure_database_dir(database_url: str) -> str:
+    if database_url.startswith("sqlite:///"):
+        # Извлекаем путь к файлу БД
+        db_path_str = database_url[len("sqlite:///"):]
+        # Обрабатываем относительные пути вида "./..." или "/./..."
+        if db_path_str.startswith("/./"):
+            db_path = BASE_DIR / db_path_str[3:]
+        else:
+            db_path = Path(db_path_str).resolve()
+        # Освящаем родительскую директорию
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        return f"sqlite:///{db_path.as_posix()}"
+    else:
+        # Для PostgreSQL, MySQL и иных — директории не создаём
+        return database_url
+
+# Получаем URI из окружения или используем путь по умолчанию
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    DEFAULT_DB_PATH = INSTANCE_DIR / "taskdb.sqlite"
+    DATABASE_URL = f"sqlite:///{DEFAULT_DB_PATH.as_posix()}"
+
+# Освящаем путь и нормализуем URI
+DATABASE_URI = ensure_database_dir(DATABASE_URL)
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{DATABASE_PATH.as_posix()}"
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -233,6 +256,11 @@ def get_tasks():
 
     tasks = query.all()
     return jsonify([t.to_dict() for t in tasks]), 200
+
+@app.route('/tasks/<int:task_id>', methods=['GET'])
+def get_task(task_id):
+    task = Task.query.get_or_404(task_id)
+    return jsonify(task.to_dict()), 200
 
 # УДАЛЕНИЕ задачи
 @app.route('/tasks/<int:task_id>', methods=['DELETE'])

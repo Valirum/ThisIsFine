@@ -38,6 +38,11 @@ function getDisplayDate(task) {
         return completed;
     }
 
+    if (task.status === 'failed') {
+        // Показываем в день окончания льготы или due_at, если льготы нет
+        return grace || due;
+    }
+
     // 2. Если просрочена и есть льгота, и мы ещё в её пределах — показываем grace_end
     if (task.status === 'overdue' && grace && now <= grace) {
         return grace;
@@ -212,6 +217,7 @@ export async function renderCalendar() {
 
                     // Стили по приоритету
                     taskLine.style.backgroundColor = SOFT_BACKGROUNDS[task.priority] || '#2a2a2a';
+                    // console.log(task.title, task.priority, SOFT_BACKGROUNDS[task.priority])
                     taskLine.style.borderLeft = `3px solid ${PRIORITY_COLORS[task.priority] || '#666'}`;
 
                     taskLine.addEventListener('click', (e) => {
