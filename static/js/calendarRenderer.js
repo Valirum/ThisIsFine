@@ -24,6 +24,11 @@ export function setViewMode(compact) {
     useCompactView = compact;
 }
 
+function toMoscowDateKey(date) {
+    if (!date || isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' });
+}
+
 // Определяет, в какой день отображать задачу
 // Определяет, в какой день и с каким временем отображать задачу
 function getDisplayDate(task) {
@@ -95,7 +100,7 @@ export async function renderCalendar() {
     const tasksByDate = {};
     tasks.forEach(task => {
         const displayDate = getDisplayDate(task);
-        const dateKey = formatDate(displayDate);
+        const dateKey = toMoscowDateKey(displayDate);
         if (!tasksByDate[dateKey]) tasksByDate[dateKey] = [];
         tasksByDate[dateKey].push(task);
     });
@@ -104,7 +109,7 @@ export async function renderCalendar() {
     let currentMonthKey = null;
 
     while (day <= currentEnd) {
-        const dateStr = formatDate(day);
+        const dateStr = toMoscowDateKey(day);
         const monthKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}`;
 
         if (monthKey !== currentMonthKey) {
