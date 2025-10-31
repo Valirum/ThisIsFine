@@ -56,12 +56,31 @@ export function setupFormHandlers(onTaskChange) {
         return;
       }
 
+      // Для planned_at
+        let plannedAtIso = null;
+        const plannedCheckbox = document.getElementById('addPlannedAtEnabled');
+        if (plannedCheckbox?.checked) {
+            plannedAtIso = getAddPlannedTaskPicker()?.getValue?.();
+        } else {
+            const presetContainer = document.getElementById('addPlannedAtPresets');
+            const selected = presetContainer?.dataset.selected;
+            if (selected && selected !== 'null') {
+                const dueAt = new Date(dueAtIso);
+                const offsetSec = parseInt(selected);
+                const plannedDate = new Date(dueAt.getTime() + offsetSec * 1000);
+                plannedAtIso = plannedDate.toISOString();
+            }
+        }
+
+        // Для duration — значение уже в поле, но можно уточнить:
+        let durationSec = parseInt(document.getElementById('newTaskDuration')?.value) || 0;
+
       const data = {
         title,
         note: document.getElementById('newTaskNote')?.value.trim() || null,
         deadlines: {
           due_at: dueAtIso,
-          planned_at: plannedEnabled ? plannedPicker?.getValue?.() : null,
+          planned_at: plannedEnabled ? plannedPicker?.getValue?.() : plannedAtIso,
           grace_end: graceEnabled ? gracePicker?.getValue?.() : null
         },
         duration_seconds: parseInt(document.getElementById('newTaskDuration')?.value) || 0,
@@ -175,6 +194,102 @@ export function setupFormHandlers(onTaskChange) {
     document.getElementById('editGraceEndEnabled')?.addEventListener('change', function() {
       document.getElementById('editGraceEndDatetimePicker').style.display = this.checked ? 'block' : 'none';
     });
+
+    function setupPresetButtons() {
+        // === Планируемое начало ===
+        const plannedPresetsContainer = document.getElementById('addPlannedAtPresets');
+        const editPlannedPresetsContainer = document.getElementById('editPlannedAtPresets'); // если есть в task-modal.html
+
+        const plannedPresets = [
+            { label: "-4 ч", value: -14400 },
+            { label: "-2 ч", value: -7200 },
+            { label: "-1 ч", value: -3600 },
+            { label: "-30 мин", value: -1800 },
+            { label: "-15 мин", value: -900 },
+            { label: "-5 мин", value: -300 },
+            { label: "(не задавать)", value: null }
+        ];
+
+        function createPresetButtons(container, groupName) {
+            if (!container) return;
+            container.innerHTML = '';
+            let activeValue = null;
+
+            const handleClick = (btn, value) => {
+                // Снимаем активность со всех
+                container.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                // Активируем текущую
+                btn.classList.add('active');
+                // Сохраняем выбранное значение в data-атрибут контейнера
+                container.dataset.selected = value;
+            };
+
+            plannedPresets.forEach(p => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'preset-btn';
+                btn.textContent = p.label;
+                btn.addEventListener('click', () => handleClick(btn, p.value));
+                container.appendChild(btn);
+            });
+
+            // По умолчанию активна последняя ("не задавать")
+            const defaultBtn = container.lastElementChild;
+            if (defaultBtn) {
+                defaultBtn.classList.add('active');
+                container.dataset.selected = 'null';
+            }
+        }
+
+        createPresetButtons(plannedPresetsContainer, 'planned');
+        createPresetButtons(editPlannedPresetsContainer, 'editPlanned');
+
+        // === Продолжительность ===
+        const durationPresetsContainer = document.getElementById('addDurationPresets');
+        const editDurationPresetsContainer = document.getElementById('editDurationPresets');
+
+        const durationPresets = [
+            { label: "5 мин", value: 300 },
+            { label: "10 мин", value: 600 },
+            { label: "20 мин", value: 1200 },
+            { label: "30 мин", value: 1800 },
+            { label: "1 ч", value: 3600 },
+            { label: "2 ч", value: 7200 },
+            { label: "(0 сек)", value: 0 }
+        ];
+
+        function createDurationButtons(container) {
+            if (!container) return;
+            container.innerHTML = '';
+            durationPresets.forEach(p => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'preset-btn';
+                btn.textContent = p.label;
+                btn.addEventListener('click', () => {
+                    container.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    container.dataset.selected = p.value;
+                    // Обновляем поле ввода
+                    const input = container.previousElementSibling?.querySelector('input[type="number"]');
+                    if (input) input.value = p.value;
+                });
+                container.appendChild(btn);
+            });
+            // По умолчанию активна последняя ("0 сек")
+            const defaultBtn = container.lastElementChild;
+            if (defaultBtn) {
+                defaultBtn.classList.add('active');
+                container.dataset.selected = '0';
+            }
+        }
+
+        createDurationButtons(durationPresetsContainer);
+        createDurationButtons(editDurationPresetsContainer);
+    }
+
+    // Вызываем после загрузки модалок
+    setupPresetButtons();
 }
 
 export async function suggestTags(title, note) {

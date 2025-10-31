@@ -17,6 +17,7 @@
         <input type="checkbox" id="addPlannedAtEnabled"> Планируемое начало
       </label>
       <div id="addPlannedAtDatetimePicker" style="display: none;"></div>
+      <div id="addPlannedAtPresets" style="display: none; margin-top: 0.5rem; display: flex; gap: 0.3rem; flex-wrap: wrap;"></div>
       <br><br>
 
       <label>
@@ -25,9 +26,11 @@
       <div id="addGraceEndDatetimePicker" style="display: none;"></div>
       <br><br>
 
-      <label>Продолжительность (сек):<br>
-        <input type="number" id="newTaskDuration" min="0" value="0">
-      </label><br><br>
+      <label>Продолжительность:<br>
+        <input type="number" id="newTaskDuration" min="0" value="0" style="width: 80px;"> сек
+      </label>
+      <div id="addDurationPresets" style="margin-top: 0.5rem; display: flex; gap: 0.3rem; flex-wrap: wrap;"></div>
+      <br><br>
 
       <label>Повторение (сек, 0 = нет):<br>
         <input type="number" id="newTaskRecurrence" min="0" value="0">
