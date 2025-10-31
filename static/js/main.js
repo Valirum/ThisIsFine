@@ -248,7 +248,7 @@ function showEditTask(task) {
     document.getElementById('viewTaskModal').style.display = 'none';
     document.getElementById('dayModal').style.display = 'none';
     document.getElementById('taskModal').style.display = 'block';
-
+    updateEditTagSuggestions();
     document.getElementById('taskTitle')?.addEventListener('input', debounce(updateEditTagSuggestions, 500));
     document.getElementById('taskNote')?.addEventListener('input', debounce(updateEditTagSuggestions, 500));
 

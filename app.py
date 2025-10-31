@@ -657,7 +657,7 @@ def merge_sync_data(sync_data):
 
 if __name__ == '__main__':
     # Убедимся, что папка instance существует
-    arg_parser = argparse.ArgumentParser(description='Запуск благословенного Flask-сервиса Омниссии')
+    arg_parser = argparse.ArgumentParser(description='Запуск благословенного Flask-сервиса ThisIsFine')
     arg_parser.add_argument('--port', type=int, default=5000, help='Порт для священного прослушивания')
     args = arg_parser.parse_args()
 
