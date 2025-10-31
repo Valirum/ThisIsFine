@@ -30,6 +30,8 @@ if os.path.exists(TMP_ENV_PATH):
 else:
     print("ℹ️ Временный файл не найден, использую tif.env")
 
+
+task_message_ids = {}
 # === Настройки ===
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -138,10 +140,16 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
                     # Отправляем уведомление ОДИН РАЗ
                     btns = InlineKeyboardMarkup([
                         [InlineKeyboardButton("▶️ Начать", callback_data=f"start_{task_id}")],
-                        [InlineKeyboardButton("🕗 Отложить на 1ч", callback_data=f"postpone_{task_id}")]
+                        [InlineKeyboardButton("🕗 Отложить на 1ч", callback_data=f"postpone_{task_id}")],
+                        [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
                     ])
-                    await bot.send_message(chat_id=chat_id, text=f"🕗 Задача «{task['title']}» пора начинать!",
+
+                    msg = await bot.send_message(chat_id=chat_id, text=f"🕗 Задача «{task['title']}» пора начинать!",
                                            reply_markup=btns)
+                    # Сохраняем message_id
+                    if uuid not in task_message_ids:
+                        task_message_ids[uuid] = []
+                    task_message_ids[uuid].append(msg.message_id)
                     current_warned.add(warn_key)
 
         # 2. Предупреждение: времени в обрез (только если duration > 0)
@@ -154,8 +162,16 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
             if now >= warn_time:
                 warn_key = f"{uuid}_due_warn"
                 if warn_key not in warned_tasks:
-                    await bot.send_message(chat_id=chat_id,
-                                           text=f"⚠️ У задачи «{task['title']}» осталось мало времени!")
+                    btns = InlineKeyboardMarkup([
+                        [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
+                    ])
+                    msg = await bot.send_message(chat_id=chat_id,
+                                           text=f"⚠️ У задачи «{task['title']}» осталось мало времени!",
+                                           reply_markup=btns)
+                    # Сохраняем message_id
+                    if uuid not in task_message_ids:
+                        task_message_ids[uuid] = []
+                    task_message_ids[uuid].append(msg.message_id)
                     current_warned.add(warn_key)
 
         # 3. Просрочка: если due_at наступил, а задача не done и не failed
@@ -165,7 +181,14 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
                 due_at = due_at.replace(tzinfo=timezone.utc)
             if now >= due_at and status != "overdue":
                 update_task_status(task_id, "overdue")
-                await bot.send_message(chat_id=chat_id, text=f"🔥 Задача «{task['title']}» ПРОСРОЧЕНА!")
+                btns = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
+                ])
+                msg = await bot.send_message(chat_id=chat_id, text=f"🔥 Задача «{task['title']}» ПРОСРОЧЕНА!",reply_markup=btns)
+                # Сохраняем message_id
+                if uuid not in task_message_ids:
+                    task_message_ids[uuid] = []
+                task_message_ids[uuid].append(msg.message_id)
 
         # 4. Предупреждение перед окончанием льготы (только если duration > 0 и есть grace_end)
         # 4. Предупреждение перед окончанием льготы
@@ -177,7 +200,14 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
             if now >= warn_time:
                 warn_key = f"{uuid}_grace_warn"
                 if warn_key not in warned_tasks:
-                    await bot.send_message(chat_id=chat_id, text=f"🚨 Последний шанс для «{task['title']}»!")
+                    btns = InlineKeyboardMarkup([
+                        [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
+                    ])
+                    msg = await bot.send_message(chat_id=chat_id, text=f"🚨 Последний шанс для «{task['title']}»!",reply_markup=btns)
+                    # Сохраняем message_id
+                    if uuid not in task_message_ids:
+                        task_message_ids[uuid] = []
+                    task_message_ids[uuid].append(msg.message_id)
                     current_warned.add(warn_key)
 
         # 5. Окончание льготы → перевод в failed (если не done)
@@ -187,27 +217,65 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
                 grace_end = grace_end.replace(tzinfo=timezone.utc)
             if now >= grace_end:
                 update_task_status(task_id, "failed")
-                await bot.send_message(chat_id=chat_id,
-                                       text=f"💀 Срок льготы для «{task['title']}» истёк. Задача помечена как FAILED.")
+                btns = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
+                ])
+                msg = await bot.send_message(chat_id=chat_id,
+                                       text=f"💀 Срок льготы для «{task['title']}» истёк. Задача помечена как FAILED.",reply_markup=btns)
+                # Сохраняем message_id
+                if uuid not in task_message_ids:
+                    task_message_ids[uuid] = []
+                task_message_ids[uuid].append(msg.message_id)
 
-    print(warned_tasks)
     warned_tasks = current_warned
-    print(warned_tasks)
+
+async def clear_task_messages(bot, chat_id, uuid):
+    """Удаляет кнопки из всех сообщений по задаче."""
+    if uuid not in task_message_ids:
+        return
+    for msg_id in task_message_ids[uuid]:
+        try:
+            await bot.edit_message_reply_markup(
+                chat_id=chat_id,
+                message_id=msg_id,
+                reply_markup=None  # ← убирает кнопки
+            )
+        except Exception as e:
+            logger.warning(f"Не удалось очистить сообщение {msg_id}: {e}")
+    # Удаляем из памяти
+    del task_message_ids[uuid]
 
 # --- Обработчики ---
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
+    bot = context.bot
+    chat_id = query.message.chat_id
 
     if data.startswith("start_"):
         task_id = int(data.split("_")[1])
         update_task_status(task_id, "inProgress")
-        await query.edit_message_text("✅ Задача переведена в «В работе».")
+        await query.edit_message_text("✅ Задача в работе.")
     elif data.startswith("postpone_"):
         task_id = int(data.split("_")[1])
         postpone_task(task_id, hours=1)
         await query.edit_message_text("🕗 Задача отложена на 1 час.")
+    elif data.startswith("done_"):
+        task_id = int(data.split("_")[1])
+        # Получаем задачу, чтобы взять uuid
+        task_res = requests.get(f"{THISISFINE_URL}/tasks/{task_id}", timeout=10)
+        if task_res.status_code == 200:
+            task = task_res.json()
+            uuid = task.get("uuid")
+            # Завершаем задачу
+            update_task_status(task_id, "done")
+            # Удаляем кнопки из всех сообщений
+            if uuid:
+                await clear_task_messages(bot, chat_id, uuid)
+            await query.edit_message_text("🎉 Задача выполнена!")
+        else:
+            await query.edit_message_text("❌ Не удалось завершить задачу.")
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🔔 Бот уведомлений ThisIsFine активен.")
