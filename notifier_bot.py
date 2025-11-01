@@ -163,6 +163,7 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
                 warn_key = f"{uuid}_due_warn"
                 if warn_key not in warned_tasks:
                     btns = InlineKeyboardMarkup([
+                        [InlineKeyboardButton("▶️ Начать", callback_data=f"start_{task_id}")],
                         [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
                     ])
                     msg = await bot.send_message(chat_id=chat_id,
@@ -182,6 +183,7 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
             if now >= due_at and status != "overdue":
                 update_task_status(task_id, "overdue")
                 btns = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("▶️ Начать", callback_data=f"start_{task_id}")],
                     [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
                 ])
                 msg = await bot.send_message(chat_id=chat_id, text=f"🔥 Задача «{task['title']}» ПРОСРОЧЕНА!",reply_markup=btns)
@@ -201,6 +203,7 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
                 warn_key = f"{uuid}_grace_warn"
                 if warn_key not in warned_tasks:
                     btns = InlineKeyboardMarkup([
+                        [InlineKeyboardButton("▶️ Начать", callback_data=f"start_{task_id}")],
                         [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
                     ])
                     msg = await bot.send_message(chat_id=chat_id, text=f"🚨 Последний шанс для «{task['title']}»!",reply_markup=btns)
@@ -221,7 +224,7 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
                     [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
                 ])
                 msg = await bot.send_message(chat_id=chat_id,
-                                       text=f"💀 Срок льготы для «{task['title']}» истёк. Задача помечена как FAILED.",reply_markup=btns)
+                                       text=f"💀 Срок для «{task['title']}» истёк. Задача помечена как FAILED.",reply_markup=btns)
                 # Сохраняем message_id
                 if uuid not in task_message_ids:
                     task_message_ids[uuid] = []
