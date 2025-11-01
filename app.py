@@ -755,6 +755,30 @@ def test_notify():
         return jsonify({"error": f"Сбой сети: {str(e)}"}), 500
 
 
+@app.route('/themes', methods=['GET'])
+def list_themes():
+    """Возвращает список доступных тем из static/themes/"""
+    themes_dir = BASE_DIR / "static" / "themes"
+    if not themes_dir.exists():
+        return jsonify([])
+
+    themes = []
+    for file in themes_dir.glob("theme-*.css"):
+        name = file.stem.replace("theme-", "", 1)
+        # Попытка прочитать человекочитаемое имя из комментария в файле (опционально)
+        label = name.capitalize()
+        try:
+            with open(file, 'r', encoding='utf-8') as f:
+                first_line = f.readline()
+                if first_line.startswith('/*') and 'name:' in first_line:
+                    # Например: /* name: Пламя Марса */
+                    label = first_line.split('name:')[-1].strip().rstrip('*/').strip()
+        except:
+            pass
+        themes.append({"name": name, "label": label})
+    return jsonify(themes)
+
+
 if __name__ == '__main__':
     # Убедимся, что папка instance существует
     arg_parser = argparse.ArgumentParser(description='Запуск благословенного Flask-сервиса ThisIsFine')

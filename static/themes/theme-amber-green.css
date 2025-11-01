@@ -1,3 +1,4 @@
+/* name: Жёлто-зелёный */
 :root {
   --bg-main: #0f1a0f;
   --bg-panel: #1a2e1a;
@@ -13,12 +14,12 @@
   --danger-light: #ff9999;
   --hover-bg: #3a6e3a;
   --hover-border: #6a9a6a;
-  --primary-bg-start: #4a2a4e;
-  --primary-bg-end: #2a1a2e;
-  --primary-border: #8a4a8a;
-  --primary-hover-bg-start: #6a4a6e;
-  --primary-hover-bg-end: #4a2a4e;
-  --primary-hover-border: #aa6a9a;
+  --primary-bg-start: #4a4e2a;
+  --primary-bg-end: #2a2e1a;
+  --primary-border: #8a8a4a;
+  --primary-hover-bg-start: #6a6e4a;
+  --primary-hover-bg-end: #4a4e2a;
+  --primary-hover-border: #aa9a6a;
   --shadow-low: rgba(0, 0, 0, 0.3);
   --shadow-medium: rgba(0, 0, 0, 0.4);
   --shadow-high: rgba(0, 0, 0, 0.5);

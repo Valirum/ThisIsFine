@@ -10,6 +10,7 @@ import {
  } from './modalManager.js';
 import { setupSyncHandlers } from './syncManager.js';
 import { setupNotifyHandlers } from './notifyManager.js';
+import { setupThemeManager } from './themeManager.js';
 
 let currentStart, currentEnd;
 let currentViewedTask = null;
@@ -549,6 +550,10 @@ function setupGlobalHandlers() {
     });
     document.getElementById('applyRange')?.addEventListener('click', applyCustomRange);
 
+    document.getElementById('openSettingsBtn')?.addEventListener('click', () => {
+        document.getElementById('settingsModal').style.display = 'block';
+      });
+
     // В main.js → setupGlobalHandlers()
     const viewToggle = document.getElementById('viewModeToggle');
     const savedView = JSON.parse(localStorage.getItem('calendarCompactView') ?? 'true');
@@ -592,6 +597,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.allTags = await tagsRes.json();
         console.log('Загружено тегов:', window.allTags.length); // для отладки
 
+        setupThemeManager();
         setupFormHandlers(() => renderCalendar());
         setupGlobalHandlers();
         setupSyncHandlers();

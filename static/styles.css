@@ -834,6 +834,20 @@ select,
   transform: translateY(1px);
 }
 
+.settings-toggle {
+  position: absolute;
+  top: 0;
+  left: 0px; /* ← слева от переключателя режима */
+  height: 36px;
+  display: flex;
+  align-items: center;
+}
+.settings-toggle .btn {
+  min-width: auto;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9em;
+}
+
 @keyframes pulse-overdue-text {
   0%, 100% { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 0 rgba(255, 68, 68, 0.5); }
   50% { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 6px rgba(255, 68, 68, 0); }
