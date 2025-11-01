@@ -297,7 +297,11 @@ function debounce(func, wait) {
 
 function showAddTask(date) {
     const addPicker = getAddTaskPicker();
-    addPicker.setValue(`${date}T12:00:00Z`);
+    const now = new Date();
+    const nextHour = new Date(now);
+    nextHour.setMinutes(0, 0, 0);
+    nextHour.setHours(nextHour.getHours() + 1);
+    addPicker.setValue(`${date}T${nextHour.toISOString().slice(11, 19)}Z`);
     document.getElementById('dayModal').style.display = 'none';
     document.getElementById('addTaskModal').style.display = 'block';
 

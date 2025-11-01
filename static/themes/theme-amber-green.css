@@ -1,0 +1,31 @@
+:root {
+  --bg-main: #0f1a0f;
+  --bg-panel: #1a2e1a;
+  --bg-panel-hover: #2a4e2a;
+  --bg-header: #254025;
+  --bg-input: #163e16;
+  --border-color: #333;
+  --border-accent: #4a8a4a;
+  --text-main: #e0ffe0;
+  --text-muted: #aaa;
+  --text-accent: #8aff8a;
+  --danger: #ff6666;
+  --danger-light: #ff9999;
+  --hover-bg: #3a6e3a;
+  --hover-border: #6a9a6a;
+  --primary-bg-start: #4a2a4e;
+  --primary-bg-end: #2a1a2e;
+  --primary-border: #8a4a8a;
+  --primary-hover-bg-start: #6a4a6e;
+  --primary-hover-bg-end: #4a2a4e;
+  --primary-hover-border: #aa6a9a;
+  --shadow-low: rgba(0, 0, 0, 0.3);
+  --shadow-medium: rgba(0, 0, 0, 0.4);
+  --shadow-high: rgba(0, 0, 0, 0.5);
+  --overlay-bg: rgba(0, 0, 0, 0.8);
+  --focus-glow: rgba(138, 255, 138, 0.2);
+  --tag-bg: #3a5a3a;
+  --tag-text: #ffcc80;
+  --tag-hover: #ffddaa;
+  --suggestion-text: #b0ffc0;
+}

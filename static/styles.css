@@ -1,16 +1,61 @@
 /* === Общие стили === */
 :root {
-  --bg-main: #0f0f1a;
-  --bg-panel: #1a1a2e;
-  --bg-panel-hover: #2a2a4e;
-  --bg-header: #252540;
+  /* Фоновые тона */
+  --bg-main: #0a0a0a;          /* Глубокий чёрный фон */
+  --bg-panel: #161616;         /* Тёмно-серый панелей */
+  --bg-panel-hover: #222222;   /* Серый при наведении */
+  --bg-header: #1c1c1c;        /* Заголовки */
+  --bg-input: #1a1a1a;         /* Фоны полей ввода */
+
+  /* Границы */
   --border-color: #333;
-  --border-accent: #4a4a8a;
-  --text-main: #e0e0ff;
-  --text-muted: #aaa;
-  --text-accent: #8a8aff;
-  --danger: #ff6666;
-  --danger-light: #ff9999;
+  --border-accent: #8a2a2a;    /* Тёмно-красный акцент */
+
+  /* Текст */
+  --text-main: #e0e0e0;        /* Основной текст */
+  --text-muted: #999;          /* Приглушённый текст */
+  --text-accent: #b02020;      /* Акцентный текст — пламя Марса */
+
+  /* Состояния и интерактив */
+  --danger: #ff4444;
+  --danger-light: #ff7777;
+  --hover-bg: #333;            /* Фон при наведении (нейтральный) */
+  --hover-border: #aa4444;     /* Граница при наведении */
+  --primary-bg-start: #4a1a1a; /* Градиент кнопок — начало */
+  --primary-bg-end: #2a0a0a;   /* Градиент кнопок — конец */
+  --primary-border: #aa2222;   /* Граница primary-кнопок */
+  --primary-hover-bg-start: #6a2a2a;
+  --primary-hover-bg-end: #4a1a1a;
+  --primary-hover-border: #cc3333;
+
+  /* Тени и прозрачность */
+  --shadow-low: rgba(0, 0, 0, 0.3);
+  --shadow-medium: rgba(0, 0, 0, 0.4);
+  --shadow-high: rgba(0, 0, 0, 0.5);
+  --overlay-bg: rgba(0, 0, 0, 0.85);
+  --focus-glow: rgba(176, 32, 32, 0.25); /* glow от --text-accent */
+
+  /* Цвета тегов и подсказок */
+  --tag-bg: #333;
+  --tag-text: #ffcc80;
+  --tag-hover: #ffddaa;
+  --suggestion-text: #b0b0b0;
+
+  /* Цвета приоритетов и статусов (сохранены как есть) */
+  --priority-routine-bg: #2a2a2a;
+  --priority-routine-color: #aaa;
+  --priority-high-bg: #3a2e1f;
+  --priority-high-color: #ffcc80;
+  --priority-critical-bg: #3a1f1f;
+  --priority-critical-color: #ff8a8a;
+  --status-planned-bg: #1f2a1f;
+  --status-planned-color: #8aff8a;
+  --status-inprogress-bg: #3a3a1f;
+  --status-inprogress-color: #ffdd8a;
+  --status-done-bg: #1f2a1f;
+  --status-done-color: #8aff8a;
+  --status-overdue-bg: #3a1f1f;
+  --status-overdue-color: #ff8a8a;
 }
 
 *,
@@ -32,6 +77,7 @@ h1 {
   margin: 0;
   font-size: clamp(1.4em, 4vw, 2em);
   line-height: 1.2;
+  color: var(--text-accent);
 }
 
 /* === Контролы и переключатели === */
@@ -72,7 +118,7 @@ h1 {
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.9em;
-  color: #c0c0ff;
+  color: var(--text-main);
 }
 
 .date-inputs input {
@@ -102,6 +148,8 @@ h1 {
   font-weight: bold;
   font-size: clamp(1em, 3vw, 1.2em);
   border-radius: 4px;
+  color: var(--text-accent);
+  border: 1px solid var(--border-accent);
 }
 
 .day {
@@ -125,6 +173,7 @@ h1 {
 .day.has-tasks {
   background: var(--bg-panel-hover);
   cursor: pointer;
+  border-color: var(--border-accent);
 }
 
 /* === Модальные окна === */
@@ -135,12 +184,12 @@ h1 {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--overlay-bg);
   z-index: 100;
 }
 
 .modal-content {
-  background: #16213e;
+  background: var(--bg-input);
   margin: auto;
   padding: 1.2rem;
   width: 95%;
@@ -150,8 +199,6 @@ h1 {
   border: 1px solid var(--border-accent);
   display: flex;
   flex-direction: column;
-  position: relative;
-  /* Центрирование внутри .modal */
   position: absolute;
   top: 50%;
   left: 50%;
@@ -184,6 +231,7 @@ h1 {
   font-family: monospace;
   margin-top: 0.4rem;
   overflow-x: auto;
+  border: 1px solid var(--border-color);
 }
 
 .priority-badge {
@@ -194,12 +242,12 @@ h1 {
   font-size: 0.85em;
 }
 
-.priority-badge.routine      { background: #2a2a2a; color: #aaa; }
-.priority-badge.high         { background: #3a2e1f; color: #ffcc80; }
-.priority-badge.critical     { background: #3a1f1f; color: #ff8a8a; }
-.priority-badge.done         { background: #1f3a1f; color: #8aff8a; }
-.priority-badge.inprogress   { background: #3a3a1f; color: #ffdd8a; }
-.priority-badge.overdue      { background: #3a1f1f; color: #ff8a8a; }
+.priority-badge.routine      { background: var(--priority-routine-bg); color: var(--priority-routine-color); }
+.priority-badge.high         { background: var(--priority-high-bg); color: var(--priority-high-color); }
+.priority-badge.critical     { background: var(--priority-critical-bg); color: var(--priority-critical-color); }
+.priority-badge.done         { background: var(--status-done-bg); color: var(--status-done-color); }
+.priority-badge.inprogress   { background: var(--status-inprogress-bg); color: var(--status-inprogress-color); }
+.priority-badge.overdue      { background: var(--status-overdue-bg); color: var(--status-overdue-color); }
 
 .tags-list {
   display: flex;
@@ -214,6 +262,7 @@ h1 {
   border-radius: 3px;
   font-size: 0.85em;
   border: 1px solid var(--border-accent);
+  color: var(--text-main);
 }
 
 .modal-actions {
@@ -240,31 +289,31 @@ h1 {
   font-size: 0.95em;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px var(--shadow-low);
   text-align: center;
   min-width: 80px;
 }
 
 .btn:hover {
-  background: linear-gradient(to bottom, #3a3a6e, var(--bg-panel-hover));
-  border-color: #6a6a9a;
+  background: linear-gradient(to bottom, var(--hover-bg), var(--bg-panel-hover));
+  border-color: var(--hover-border);
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 6px var(--shadow-high);
 }
 
 .btn:active {
   transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 2px var(--shadow-low);
 }
 
 .btn--primary {
-  background: linear-gradient(to bottom, #4a2a4e, #2a1a2e);
-  border-color: #8a4a8a;
+  background: linear-gradient(to bottom, var(--primary-bg-start), var(--primary-bg-end));
+  border-color: var(--primary-border);
 }
 
 .btn--primary:hover {
-  background: linear-gradient(to bottom, #6a4a6e, #4a2a4e);
-  border-color: #aa6a9a;
+  background: linear-gradient(to bottom, var(--primary-hover-bg-start), var(--primary-hover-bg-end));
+  border-color: var(--primary-hover-border);
 }
 
 .btn--small {
@@ -290,7 +339,7 @@ h1 {
 }
 
 .close:hover {
-  background: rgba(255, 102, 102, 0.2);
+  background: rgba(255, 68, 68, 0.2);
   color: var(--danger-light);
 }
 
@@ -430,11 +479,11 @@ select,
   }
 
   .modal-content h3 {
-      font-size: 1.1em;
-      margin-top: 0;
-      padding-right: 2.5rem; /* ← резервируем место под .close */
-      position: relative;    /* ← гарантирует корректный контекст наложения */
-    }
+    font-size: 1.1em;
+    margin-top: 0;
+    padding-right: 2.5rem;
+    position: relative;
+  }
 
   form label {
     font-size: 0.9em;
@@ -488,7 +537,7 @@ select,
 }
 
 .task-indicator.status-inprogress {
-  box-shadow: 0 0 3px #ffcc00;
+  box-shadow: 0 0 3px var(--priority-high-color);
 }
 
 .task-indicator.status-overdue {
@@ -506,12 +555,12 @@ select,
   font-size: 0.75em;
   padding: 0.15rem 0.25rem;
   border-radius: 2px;
-  color: #e0e0ff;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   position: relative;
-  margin-bottom: 0.25rem; /* ← расстояние между задачами */
+  margin-bottom: 0.25rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -524,18 +573,18 @@ select,
 }
 
 .task-line.status-inprogress {
-  box-shadow: inset 0 0 0 1px #ffcc00;
+  box-shadow: inset 0 0 0 1px var(--priority-high-color);
 }
 
 .task-line.status-overdue {
-  box-shadow: inset 0 0 0 1px #ff4444, 0 0 4px rgba(255, 68, 68, 0.5);
+  box-shadow: inset 0 0 0 1px var(--danger), 0 0 4px rgba(255, 68, 68, 0.5);
   animation: pulse-overdue-text 2s infinite;
 }
 
 .task-line::after {
   content: attr(data-time);
   font-size: 0.7em;
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 /* === Контейнер задачи в модалке дня === */
@@ -544,29 +593,29 @@ select,
   flex-direction: column;
   padding: 0.6rem 0.8rem;
   margin-bottom: 0.6rem;
-  background: #1a1a2e;
+  background: var(--bg-panel);
   border-radius: 8px;
-  border-left: 4px solid #666;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border-left: 4px solid #555;
+  box-shadow: 0 2px 4px var(--shadow-medium);
   transition: transform 0.15s ease;
   cursor: pointer;
 }
 
 .day-task-item:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 6px var(--shadow-high);
 }
 
 /* Приоритеты — левая полоса */
 .day-task-item.priority-routine { border-left-color: #555; }
-.day-task-item.priority-high    { border-left-color: #ffcc00; }
-.day-task-item.priority-critical{ border-left-color: #ff4444; }
+.day-task-item.priority-high    { border-left-color: var(--priority-high-color); }
+.day-task-item.priority-critical{ border-left-color: var(--danger); }
 
 /* Статусы */
 .day-task-item.status-done { opacity: 0.65; text-decoration: line-through; }
-.day-task-item.status-inprogress { background: #22253a; }
+.day-task-item.status-inprogress { background: var(--bg-panel-hover); }
 .day-task-item.status-overdue {
-  background: #2a1a1a;
+  background: var(--priority-critical-bg);
   box-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
   animation: pulse-overdue-text 2s infinite;
 }
@@ -593,11 +642,11 @@ select,
   color: #fff;
   white-space: nowrap;
   font-weight: bold;
-  text-shadow: 0 0 2px rgba(0,0,0,0.5);
+  text-shadow: 0 0 2px rgba(0,0,0,0.7);
 }
 
 .day-task-tag--more {
-  background: #3a3a5a !important;
+  background: #3a3a3a !important;
   color: #ccc;
 }
 
@@ -617,16 +666,11 @@ select,
   text-transform: uppercase;
 }
 
-/* Цвета приоритетов */
-.priority-badge.routine { background: #2a2a2a; color: #aaa; }
-.priority-badge.high { background: #3a2e1f; color: #ffcc80; }
-.priority-badge.critical { background: #3a1f1f; color: #ff8a8a; }
-
-/* Цвета статусов */
-.status-badge.planned { background: #1f2a1f; color: #8aff8a; }
-.status-badge.inprogress { background: #3a3a1f; color: #ffdd8a; }
-.status-badge.done { background: #1f2a1f; color: #8aff8a; opacity: 0.8; }
-.status-badge.overdue { background: #3a1f1f; color: #ff8a8a; }
+/* Цвета приоритетов и статусов — через переменные */
+.status-badge.planned     { background: var(--status-planned-bg); color: var(--status-planned-color); }
+.status-badge.inprogress  { background: var(--status-inprogress-bg); color: var(--status-inprogress-color); }
+.status-badge.done        { background: var(--status-done-bg); color: var(--status-done-color); opacity: 0.8; }
+.status-badge.overdue     { background: var(--status-overdue-bg); color: var(--status-overdue-color); }
 
 /* Заголовок и время */
 .day-task-title {
@@ -638,46 +682,32 @@ select,
 
 .day-task-title .time {
   font-size: 0.85em;
-  color: #aaa;
+  color: var(--text-muted);
   font-weight: normal;
 }
 
-/* В styles.css */
-#tagSuggestions {
-  font-size: 0.85em;
-  color: #b0b0ff; /* светло-лавандовый — читаем на тёмном фоне */
-  margin-top: 0.25rem;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.4); /* лёгкая тень для контраста */
-}
-
-#tagSuggestions .suggested-tag {
-  color: #ffcc80; /* акцентный цвет, как у high-priority */
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-#tagSuggestions .suggested-tag:hover {
-  color: #ffddaa;
-}
-
+/* Подсказки тегов */
+#tagSuggestions,
 #editTagSuggestions {
   font-size: 0.85em;
-  color: #b0b0ff; /* светло-лавандовый — читаем на тёмном фоне */
+  color: var(--suggestion-text);
   margin-top: 0.25rem;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.4); /* лёгкая тень для контраста */
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
 }
 
+#tagSuggestions .suggested-tag,
 #editTagSuggestions .suggested-tag {
-  color: #ffcc80; /* акцентный цвет, как у high-priority */
+  color: var(--tag-text);
   text-decoration: underline;
   cursor: pointer;
 }
 
+#tagSuggestions .suggested-tag:hover,
 #editTagSuggestions .suggested-tag:hover {
-  color: #ffddaa;
+  color: var(--tag-hover);
 }
 
-/* === Унифицированный стиль для всех полей ввода в модалках === */
+/* === Поля ввода в модалках === */
 .modal-content input[type="text"],
 .modal-content input[type="number"],
 .modal-content textarea {
@@ -689,7 +719,7 @@ select,
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.95em;
   width: 100%;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 2px var(--shadow-low);
 }
 
 .modal-content textarea {
@@ -700,8 +730,8 @@ select,
 .modal-content input:focus,
 .modal-content textarea:focus {
   outline: none;
-  border-color: #8a8aff;
-  box-shadow: 0 0 0 2px rgba(138, 138, 255, 0.2);
+  border-color: var(--text-accent);
+  box-shadow: 0 0 0 2px var(--focus-glow);
 }
 
 /* === История статусов === */
@@ -716,10 +746,10 @@ select,
   font-family: monospace;
   font-size: 0.9em;
 }
-.status-history-entry.status-planned     { border-left-color: #8aff8a; }
-.status-history-entry.status-inprogress  { border-left-color: #ffdd8a; }
-.status-history-entry.status-done        { border-left-color: #8aff8a; opacity: 0.9; }
-.status-history-entry.status-overdue     { border-left-color: #ff8a8a; }
+.status-history-entry.status-planned     { border-left-color: var(--status-planned-color); }
+.status-history-entry.status-inprogress  { border-left-color: var(--status-inprogress-color); }
+.status-history-entry.status-done        { border-left-color: var(--status-done-color); opacity: 0.9; }
+.status-history-entry.status-overdue     { border-left-color: var(--status-overdue-color); }
 
 .status-history-time {
   color: var(--text-muted);
@@ -735,8 +765,10 @@ select,
   margin-right: 0.3rem;
   cursor: pointer;
   user-select: none;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
   transition: transform 0.1s ease, opacity 0.2s;
+  background: var(--tag-bg);
+  color: var(--tag-text);
 }
 
 .suggested-tag-badge:hover {
@@ -758,25 +790,24 @@ select,
   font-size: 0.9em;
 }
 
-/* В блоке .priority-badge */
+/* === Статус "failed" === */
 .priority-badge.failed {
-    background: #3a1f1f;
-    color: #ff8a8a;
-    text-decoration: line-through;
+  background: var(--priority-critical-bg);
+  color: var(--priority-critical-color);
+  text-decoration: line-through;
 }
 
-/* Для кружков и текстовых строк */
 .task-indicator.status-failed,
 .task-line.status-failed,
 .day-task-item.status-failed {
-    opacity: 0.5;
-    text-decoration: line-through;
-    background: #1a0a1a !important;
-    border-left-color: #ff4444 !important;
+  opacity: 0.5;
+  text-decoration: line-through;
+  background: #1a0a0a !important;
+  border-left-color: var(--danger) !important;
 }
 
 .task-indicator.status-failed {
-    border-color: #ff4444 !important;
+  border-color: var(--danger) !important;
 }
 
 .preset-btn {
@@ -793,17 +824,17 @@ select,
 }
 .preset-btn:hover {
   background: var(--bg-panel-hover);
-  border-color: #6a6a9a;
+  border-color: var(--hover-border);
 }
 .preset-btn.active {
   background: var(--text-accent);
   color: #000;
   border-color: #ffffff;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
   transform: translateY(1px);
 }
 
 @keyframes pulse-overdue-text {
-  0%, 100% { box-shadow: inset 0 0 0 1px #ff4444, 0 0 0 0 rgba(255, 68, 68, 0.5); }
-  50% { box-shadow: inset 0 0 0 1px #ff4444, 0 0 0 6px rgba(255, 68, 68, 0); }
+  0%, 100% { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 0 rgba(255, 68, 68, 0.5); }
+  50% { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 6px rgba(255, 68, 68, 0); }
 }

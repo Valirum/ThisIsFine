@@ -1,0 +1,33 @@
+:root {
+  --bg-main: #0f0f1a;
+  --bg-panel: #1a1a2e;
+  --bg-panel-hover: #2a2a4e;
+  --bg-header: #252540;
+  --bg-input: #16213e;
+  --border-color: #333;
+  --border-accent: #4a4a8a;
+  --text-main: #e0e0ff;
+  --text-muted: #aaa;
+  --text-accent: #8a8aff;
+  --danger: #ff6666;
+  --danger-light: #ff9999;
+  --hover-bg: #3a3a6e;
+  --hover-border: #6a6a9a;
+  --primary-bg-start: #4a2a4e;
+  --primary-bg-end: #2a1a2e;
+  --primary-border: #8a4a8a;
+  --primary-hover-bg-start: #6a4a6e;
+  --primary-hover-bg-end: #4a2a4e;
+  --primary-hover-border: #aa6a9a;
+  --shadow-low: rgba(0, 0, 0, 0.3);
+  --shadow-medium: rgba(0, 0, 0, 0.4);
+  --shadow-high: rgba(0, 0, 0, 0.5);
+  --overlay-bg: rgba(0, 0, 0, 0.8);
+  --focus-glow: rgba(138, 138, 255, 0.2);
+  --tag-bg: #3a3a5a;
+  --tag-text: #ffcc80;
+  --tag-hover: #ffddaa;
+  --suggestion-text: #b0b0ff;
+
+  /* Приоритеты и статусы — оставить как в базе (они не зависят от общей темы) */
+}
