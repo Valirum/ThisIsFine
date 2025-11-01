@@ -588,6 +588,21 @@ function setupGlobalHandlers() {
     });
 }
 
+// Пасхалка: ThisIsFine ↔ ThisIsFire
+const titleEl = document.getElementById('mainTitle');
+if (titleEl) {
+  const originalText = titleEl.textContent; // "ThisIsFine"
+  const fireText = originalText.replace('n', 'r'); // "ThisIsFire"
+
+  titleEl.addEventListener('mouseenter', () => {
+    titleEl.textContent = fireText;
+  });
+
+  titleEl.addEventListener('mouseleave', () => {
+    titleEl.textContent = originalText;
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await loadModals();

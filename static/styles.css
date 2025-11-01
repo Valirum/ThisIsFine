@@ -75,6 +75,7 @@ body {
 h1 {
   text-align: center;
   margin: 0;
+  font-family: 'JetBrains Mono', monospace, 'Courier New', sans-serif;
   font-size: clamp(1.4em, 4vw, 2em);
   line-height: 1.2;
   color: var(--text-accent);
