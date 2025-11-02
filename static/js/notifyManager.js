@@ -5,7 +5,8 @@ export async function setupNotifyHandlers() {
     const testBtn = document.getElementById('testNotifyBtn');
     const statusEl = document.getElementById('notifyStatus');
 
-    document.getElementById('openNotifyModalBtn')?.addEventListener('click', async () => {
+    document.getElementById('openNotifyFromSettings')?.addEventListener('click', async () => {
+        document.getElementById('settingsModal').style.display = 'none';
         modal.style.display = 'block';
         statusEl.textContent = '';
 

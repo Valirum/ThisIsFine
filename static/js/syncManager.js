@@ -21,7 +21,8 @@ export async function loadPeers() {
 
 export function setupSyncHandlers() {
     // Открытие модалки
-    document.getElementById('openSyncModalBtn')?.addEventListener('click', async () => {
+    document.getElementById('openSyncFromSettings')?.addEventListener('click', async () => {
+        document.getElementById('settingsModal').style.display = 'none';
         document.getElementById('syncModal').style.display = 'block';
         await loadPeers();
     });
