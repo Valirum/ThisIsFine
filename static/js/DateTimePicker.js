@@ -23,7 +23,8 @@ export class DateTimePicker {
         this.hourInput.maxLength = 2;
         this.hourInput.style.width = '100%';
         this.hourInput.style.textAlign = 'center';
-        this._applyInputStyle(this.hourInput);
+        this.hourInput.className = 'datetime-input';
+
         hourContainer.appendChild(this.hourInput);
 
         // === МИНУТЫ: ТЕКСТОВОЕ ПОЛЕ (БЕЗ СТРЕЛОК) ===
@@ -33,7 +34,7 @@ export class DateTimePicker {
         this.minuteInput.maxLength = 2;
         this.minuteInput.style.width = '50px';
         this.minuteInput.style.textAlign = 'center';
-        this._applyInputStyle(this.minuteInput);
+        this.minuteInput.className = 'datetime-input';
 
         // Обработчики часов
         this.hourInput.addEventListener('input', (e) => this._handleHourInput(e));
@@ -72,19 +73,6 @@ export class DateTimePicker {
             const roundedMin = Math.ceil(now.getMinutes() / 5) * 5;
             this.setValue(new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), roundedMin));
         }
-    }
-
-    _applyInputStyle(el) {
-        el.style.border = '1px solid #444';
-        el.style.borderRadius = '4px';
-        el.style.backgroundColor = '#1e1e1e';
-        el.style.color = 'white';
-        el.style.fontSize = 'inherit';
-        el.style.height = '28px';
-        el.style.boxSizing = 'border-box';
-        el.style.padding = '4px 6px';
-        el.style.textAlign = 'center';
-        // Никаких appearance — оба поля text
     }
 
     _adjustHour(delta) {

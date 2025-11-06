@@ -874,6 +874,98 @@ select,
   margin-left: auto;
 }
 
+.task-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid #000;
+  box-shadow: 0 0 1px #fff;
+}
+.task-indicator.priority-routine { background-color: var(--priority-routine-color); }
+.task-indicator.priority-high    { background-color: var(--priority-high-color); }
+.task-indicator.priority-critical{ background-color: var(--priority-critical-color); }
+
+.task-indicator.status-done      { opacity: 0.5; }
+.task-indicator.status-inprogress{ box-shadow: 0 0 3px var(--priority-high-color); }
+.task-indicator.status-overdue   { box-shadow: 0 0 0 0 rgba(255,68,68,0.7); }
+
+.dependency-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--bg-header);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-accent);
+  margin: 0.1rem 0.3rem 0.1rem 0;
+}
+.dependency-title {
+  font-size: 0.85em;
+  color: var(--text-main);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.close-dependency {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 1em;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.preset-btn {
+  background: var(--bg-panel);
+  color: var(--text-main);
+  border: 1px solid var(--border-accent);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85em;
+  font-family: monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.preset-btn:hover {
+  background: var(--bg-panel-hover);
+  border-color: var(--hover-border);
+}
+.preset-btn.active {
+  background: var(--text-accent);
+  color: #000;
+  border-color: #ffffff;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+  transform: translateY(1px);
+}
+
+.datetime-input {
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: white;
+  font-size: inherit;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.datetime-input:focus {
+  outline: none;
+  border-color: var(--text-accent);
+  box-shadow: 0 0 0 2px var(--focus-glow);
+}
+
 @keyframes pulse-overdue-text {
   0%, 100% { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 0 rgba(255, 68, 68, 0.5); }
   50% { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 6px rgba(255, 68, 68, 0); }

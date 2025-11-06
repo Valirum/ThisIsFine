@@ -153,16 +153,7 @@ export async function renderCalendar() {
                     const badge = document.createElement('div');
                     badge.className = 'task-indicator'; // сброс
                     badge.classList.add(`status-${task.status.toLowerCase()}`);
-                    badge.style.backgroundColor = PRIORITY_COLORS[task.priority] || '#666';
-
-                    // Визуальный акцент по статусу (например, рамка)
-                    if (task.status === 'done') {
-                        badge.style.opacity = '0.5';
-                    } else if (task.status === 'inProgress') {
-                        badge.style.boxShadow = '0 0 2px #ffcc00';
-                    } else if (task.status === 'overdue') {
-                        badge.style.boxShadow = '0 0 3px #ff4444';
-                    }
+                    badge.className = `task-indicator priority-${task.priority} status-${task.status.toLowerCase()}`;
 
                     badgeContainer.appendChild(badge);
                 });
