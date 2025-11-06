@@ -29,6 +29,11 @@ function toMoscowDateKey(date) {
     return date.toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' });
 }
 
+export function getTodayMoscowKey() {
+    const now = new Date();
+    return now.toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' }); // "2025-11-06"
+}
+
 // Определяет, в какой день отображать задачу
 // Определяет, в какой день и с каким временем отображать задачу
 function getDisplayDate(task) {
@@ -125,6 +130,10 @@ export async function renderCalendar() {
         const dayEl = document.createElement('div');
         dayEl.className = 'day';
         dayEl.dataset.date = dateStr;
+
+        if (dateStr === getTodayMoscowKey()) {
+            dayEl.classList.add('day--today');
+        }
 
         const dayNumber = document.createElement('div');
         dayNumber.className = 'day-number';
