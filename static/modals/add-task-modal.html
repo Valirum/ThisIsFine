@@ -36,9 +36,11 @@
         <input type="number" id="newTaskRecurrence" min="0" value="0">
       </label><br><br>
 
-      <label>Зависимости (ID задач через запятую):<br>
-        <input type="text" id="newTaskDependencies" placeholder="1,5,12">
-      </label><br><br>
+      <label>Зависимости:<br>
+        <div id="selectedDependenciesContainer" style="margin-top:0.3rem;"></div>
+        <button type="button" class="btn" id="openSearchForDeps">+ Выбрать задачи</button>
+      </label>
+      <input type="hidden" id="newTaskDependencies"><br><br>
 
       <label>Теги (через запятую):<br>
         <input type="text" id="newTaskTags" placeholder="работа, срочно">

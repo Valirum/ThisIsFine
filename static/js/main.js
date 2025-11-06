@@ -395,15 +395,37 @@ function showViewTask(task) {
   document.getElementById('viewTaskRecurrence').textContent =
     recurrenceSec ? formatDuration(recurrenceSec) : 'Нет';
 
-  // Зависимости
-  const depsRow = document.getElementById('viewTaskDependenciesRow');
-  const deps = Array.isArray(task.dependencies) ? task.dependencies : [];
-  if (deps.length > 0) {
-    depsRow.style.display = 'flex';
-    document.getElementById('viewTaskDependencies').textContent = deps.join(', ');
-  } else {
-    depsRow.style.display = 'none';
-  }
+    // Зависимости → кликабельные бейджи с ID
+    const depsRow = document.getElementById('viewTaskDependenciesRow');
+    const deps = Array.isArray(task.dependencies) ? task.dependencies : [];
+    const depsContainer = document.getElementById('viewTaskDependencies');
+
+    if (deps.length > 0) {
+        depsRow.style.display = 'flex';
+        // Находим полные задачи в кэше по UUID → получаем их ID для клика
+        const depTasks = deps.map(uuid => {
+            return window.allCachedTasks?.find(t => t.uuid === uuid) || { uuid, id: null, title: null };
+        });
+        try{
+        depsContainer.innerHTML = depTasks.map(dep => {
+            const title = dep.title || `#${dep.uuid.substring(0, 8)}`;
+            const disabled = dep.id === null; // если не найдена в кэше — нельзя кликнуть
+            return `
+                <span class="tag-item ${disabled ? '' : 'clickable'}"
+                      ${dep.id ? `data-task-id="${dep.id}"` : ''}
+                      title="${disabled ? 'Задача не найдена в кэше' : 'Показать задачу'}"
+                      style="cursor: ${disabled ? 'default' : 'pointer'}; background: var(--bg-header); border: 1px solid var(--border-accent);">
+                    ${title}
+                </span>
+            `;
+        }).join('');
+        } catch(err) {
+            console.log("wrong uuid");
+            depsRow.style.display = 'none';
+        }
+    } else {
+        depsRow.style.display = 'none';
+    }
 
   // Описание (note)
   const noteRow = document.getElementById('viewTaskNoteRow');
@@ -421,6 +443,22 @@ function showViewTask(task) {
 function setupGlobalHandlers() {
     document.querySelectorAll('[data-period]').forEach(btn => {
         btn.addEventListener('click', e => setPeriod(e.target.dataset.period));
+    });
+
+    // Клик по зависимостям в модалке просмотра → полная загрузка задачи
+    document.getElementById('viewTaskDependencies')?.addEventListener('click', async (e) => {
+        if (!e.target.classList.contains('clickable')) return;
+        const taskId = Number(e.target.dataset.taskId);
+        if (!taskId) return;
+
+        try {
+            const res = await fetch(`/tasks/${taskId}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const fullTask = await res.json();
+            showViewTask(fullTask);
+        } catch (err) {
+            alert(`Не удалось загрузить зависимую задачу: ${err.message}`);
+        }
     });
 
     // Внутри setupGlobalHandlers()
@@ -611,6 +649,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tagsRes = await fetch('/tags');
         window.allTags = await tagsRes.json();
         console.log('Загружено тегов:', window.allTags.length); // для отладки
+
+        const tasksRes = await fetch('/tasks/simple'); // или /tasks/simple
+        window.allCachedTasks = await tasksRes.json();
+        console.log('Загружены задачи для поиска:', window.allCachedTasks);
 
         setupThemeManager();
         setupFormHandlers(() => renderCalendar());

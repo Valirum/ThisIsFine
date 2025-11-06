@@ -7,6 +7,7 @@ import {
    getAddGraceEndPlannedTaskPicker,
    getEditGraceEndPlannedTaskPicker
  } from './modalManager.js';
+ import { DependencySelector } from './dependencySelector.js';
 
 
 export function setupFormHandlers(onTaskChange) {
@@ -32,6 +33,13 @@ export function setupFormHandlers(onTaskChange) {
         .map(s => s.trim().toLowerCase())
         .filter(s => s !== '');
     }
+
+    // Инициализация селектора зависимостей для формы создания
+    const addDepsSelector = new DependencySelector(
+        'selectedDependenciesContainer',
+        'openSearchForDeps',
+        'newTaskDependencies' // ← оставляем скрытое поле для совместимости или валидации
+    );
 
     // === ОБРАБОТЧИК СОЗДАНИЯ ===
     document.getElementById('createTaskForm')?.addEventListener('submit', async (e) => {
@@ -86,7 +94,7 @@ export function setupFormHandlers(onTaskChange) {
         duration_seconds: parseInt(document.getElementById('newTaskDuration')?.value) || 0,
         priority: document.getElementById('newTaskPriority')?.value || 'routine',
         recurrence_seconds: parseInt(document.getElementById('newTaskRecurrence')?.value) || 0,
-        dependencies: parseDependencies(document.getElementById('newTaskDependencies')?.value),
+        dependencies: addDepsSelector.getDependencies(),
         tags: parseTags(document.getElementById('newTaskTags')?.value),
         status: document.getElementById('taskStatus')?.value || 'planned'
       };
@@ -114,6 +122,12 @@ export function setupFormHandlers(onTaskChange) {
     // === ОБРАБОТЧИК РЕДАКТИРОВАНИЯ ===
     document.getElementById('editTaskForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      const editDepsSelector = new DependencySelector(
+            'editSelectedDependenciesContainer',
+            'openSearchForEditDeps',
+            'taskDependencies'
+        );
 
       const taskId = document.getElementById('taskId')?.value;
       if (!taskId) {
@@ -152,7 +166,7 @@ export function setupFormHandlers(onTaskChange) {
         duration_seconds: parseInt(document.getElementById('taskDuration')?.value) || 0,
         priority: document.getElementById('taskPriority')?.value || 'routine',
         recurrence_seconds: parseInt(document.getElementById('taskRecurrence')?.value) || 0,
-        dependencies: parseDependencies(document.getElementById('taskDependencies')?.value),
+        dependencies: addDepsSelector.getDependencies(),
         tags: parseTags(document.getElementById('taskTags')?.value),
         status: document.getElementById('taskStatus')?.value || 'planned'
       };

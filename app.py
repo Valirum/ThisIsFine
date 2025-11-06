@@ -988,6 +988,74 @@ def spawn_recurring_tasks_endpoint():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/tasks/simple', methods=['GET'])
+def get_tasks_simple():
+    tasks = db.session.query(Task.id, Task.uuid, Task.title).all()
+    return jsonify([
+        {"id": t.id, "uuid": t.uuid, "title": t.title}
+        for t in tasks
+    ]), 200
+
+
+@app.route('/tasks/search', methods=['GET'])
+def search_tasks():
+    query = request.args.get('query', '').strip()
+    if not query:
+        return jsonify({"results": []}), 200
+
+    # 1. Разбираем запрос: выделяем слова и кандидаты на теги
+    words = []
+    tag_prefixes = ['#', '№']  # ← оба префикса
+    tag_candidates = []  # ← строки после # или №
+
+    for part in query.split():
+        if any(part.startswith(prefix) for prefix in tag_prefixes):
+            # Определяем, какой именно префикс использован
+            for prefix in tag_prefixes:
+                if part.startswith(prefix):
+                    tag_part = part[len(prefix):].lower()
+                    if tag_part:
+                        tag_candidates.append(tag_part)
+                    break
+        else:
+            words.append(part)
+
+    # 2. Получаем ВСЕ теги из БД один раз
+    all_tag_names = [t.name for t in Tag.query.with_entities(Tag.name).all()]
+
+    # 3. Для каждого кандидата находим подходящие теги (по подстроке)
+    matched_tags = set()
+    for candidate in tag_candidates:
+        for tag_name in all_tag_names:
+            if candidate in tag_name:  # ← подстрока!
+                matched_tags.add(tag_name)
+
+    # 4. Формируем итоговый запрос к задачам
+    task_query = Task.query
+
+    # Фильтр по найденным тегам (если есть)
+    if matched_tags:
+        task_query = task_query.join(Task.tags).filter(
+            Tag.name.in_(matched_tags)
+        ).distinct()
+
+    # Фильтр по тексту (title + note)
+    if words:
+        search_text = ' '.join(words).lower()
+        task_query = task_query.filter(
+            db.or_(
+                Task.title.ilike(f"%{search_text}%"),
+                Task.note.ilike(f"%{search_text}%")
+            )
+        )
+
+    # Выполняем запрос
+    tasks = task_query.limit(20).all()
+    return jsonify({
+        "results": [task.to_dict() for task in tasks]
+    }), 200
+
+
 if __name__ == '__main__':
     # Убедимся, что папка instance существует
     arg_parser = argparse.ArgumentParser(description='Запуск благословенного Flask-сервиса ThisIsFine')
