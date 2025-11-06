@@ -41,6 +41,12 @@ export function setupFormHandlers(onTaskChange) {
         'newTaskDependencies' // ← оставляем скрытое поле для совместимости или валидации
     );
 
+    const editDepsSelector = new DependencySelector(
+        'editSelectedDependenciesContainer',
+        'openSearchForEditDeps',
+        'taskDependencies'
+    );
+
     // === ОБРАБОТЧИК СОЗДАНИЯ ===
     document.getElementById('createTaskForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -123,12 +129,6 @@ export function setupFormHandlers(onTaskChange) {
     document.getElementById('editTaskForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const editDepsSelector = new DependencySelector(
-            'editSelectedDependenciesContainer',
-            'openSearchForEditDeps',
-            'taskDependencies'
-        );
-
       const taskId = document.getElementById('taskId')?.value;
       if (!taskId) {
         alert('ID задачи не найден');
@@ -166,7 +166,7 @@ export function setupFormHandlers(onTaskChange) {
         duration_seconds: parseInt(document.getElementById('taskDuration')?.value) || 0,
         priority: document.getElementById('taskPriority')?.value || 'routine',
         recurrence_seconds: parseInt(document.getElementById('taskRecurrence')?.value) || 0,
-        dependencies: addDepsSelector.getDependencies(),
+        dependencies: editDepsSelector.getDependencies(),
         tags: parseTags(document.getElementById('taskTags')?.value),
         status: document.getElementById('taskStatus')?.value || 'planned'
       };
@@ -313,6 +313,47 @@ export function setupFormHandlers(onTaskChange) {
 
         createDurationButtons(durationPresetsContainer);
         createDurationButtons(editDurationPresetsContainer);
+
+
+        // === Периодичность ===
+        const recurrencePresetsContainer = document.getElementById('addRecurrencePresets');
+        const editRecurrencePresetsContainer = document.getElementById('editRecurrencePresets');
+        const recurrencePresets = [
+            { label: "Каждые 15 мин", value: 900 },
+            { label: "Каждый час", value: 3600 },
+            { label: "Каждые 2 ч", value: 7200 },
+            { label: "Каждые 6 ч", value: 21600 },
+            { label: "Ежедневно", value: 86400 },
+            { label: "Еженедельно", value: 604800 },
+            { label: "(без повтора)", value: 0 }
+        ];
+        function createRecurrenceButtons(container) {
+            if (!container) return;
+            container.innerHTML = '';
+            recurrencePresets.forEach(p => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'preset-btn';
+                btn.textContent = p.label;
+                btn.addEventListener('click', () => {
+                    container.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    container.dataset.selected = p.value;
+                    // Обновляем поле ввода
+                    const input = container.previousElementSibling?.querySelector('input[type="number"]');
+                    if (input) input.value = p.value;
+                });
+                container.appendChild(btn);
+            });
+            // По умолчанию активна последняя ("без повтора")
+            const defaultBtn = container.lastElementChild;
+            if (defaultBtn) {
+                defaultBtn.classList.add('active');
+                container.dataset.selected = '0';
+            }
+        }
+        createRecurrenceButtons(recurrencePresetsContainer);
+        createRecurrenceButtons(editRecurrencePresetsContainer);
     }
 
     // Вызываем после загрузки модалок
