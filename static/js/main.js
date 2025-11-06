@@ -6,7 +6,8 @@ import {
    getEditPlannedTaskPicker,
    getEditGraceEndPlannedTaskPicker,
    loadModals,
-   getAddTaskPicker
+   getAddTaskPicker,
+   getEditDepsSelector
  } from './modalManager.js';
 import { setupSyncHandlers } from './syncManager.js';
 import { setupNotifyHandlers } from './notifyManager.js';
@@ -163,7 +164,15 @@ function populateEditForm(task) {
   document.getElementById('taskRecurrence').value = task.recurrence_seconds || 0;
 
   // Зависимости и теги
-  document.getElementById('taskDependencies').value = (task.dependencies || []).join(', ');
+  // --- Зависимости ---
+  const editDepsSelector = getEditDepsSelector();
+    if (Array.isArray(task.dependencies) && task.dependencies.length > 0) {
+        editDepsSelector.selectedUuids = [...task.dependencies]; // ← копируем UUID-ы
+        editDepsSelector.render(); // ← обновляем DOM
+    } else {
+        editDepsSelector.selectedUuids = [];
+        editDepsSelector.render();
+    }
   document.getElementById('taskTags').value = (task.tags || []).join(', ');
 
   // === Работа с датами ===

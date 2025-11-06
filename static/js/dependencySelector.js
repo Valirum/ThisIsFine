@@ -72,7 +72,7 @@ export class DependencySelector {
                             border-radius: 50%;
                             flex-shrink: 0;
                         ">&times;</button>
-            </div>
+            </div><br><br>
         `;
     }).join('');
 
@@ -80,6 +80,7 @@ export class DependencySelector {
     this.container.querySelectorAll('.close-dependency').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation(); // на всякий случай
+            e.preventDefault();
             const uuid = btn.dataset.uuid;
             this.remove(uuid);
         });

@@ -5,9 +5,11 @@ import {
    getAddPlannedTaskPicker,
    getEditPlannedTaskPicker,
    getAddGraceEndPlannedTaskPicker,
-   getEditGraceEndPlannedTaskPicker
+   getEditGraceEndPlannedTaskPicker,
+   getAddDepsSelector,
+   getEditDepsSelector
  } from './modalManager.js';
- import { DependencySelector } from './dependencySelector.js';
+
 
 
 export function setupFormHandlers(onTaskChange) {
@@ -34,18 +36,8 @@ export function setupFormHandlers(onTaskChange) {
         .filter(s => s !== '');
     }
 
-    // Инициализация селектора зависимостей для формы создания
-    const addDepsSelector = new DependencySelector(
-        'selectedDependenciesContainer',
-        'openSearchForDeps',
-        'newTaskDependencies' // ← оставляем скрытое поле для совместимости или валидации
-    );
-
-    const editDepsSelector = new DependencySelector(
-        'editSelectedDependenciesContainer',
-        'openSearchForEditDeps',
-        'taskDependencies'
-    );
+    const addDepsSelector = getAddDepsSelector();
+    const editDepsSelector = getEditDepsSelector();
 
     // === ОБРАБОТЧИК СОЗДАНИЯ ===
     document.getElementById('createTaskForm')?.addEventListener('submit', async (e) => {

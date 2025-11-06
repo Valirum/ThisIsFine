@@ -1,6 +1,7 @@
 // modalManager.js
 import { DateTimePicker } from './DateTimePicker.js';
 import { initTaskSearch } from './taskSearch.js';
+import { DependencySelector } from './dependencySelector.js';
 
 let addTaskPickerInstance;
 let addTaskPlannedPickerInstance;
@@ -8,6 +9,8 @@ let addTaskGraceEndPickerInstance;
 let editTaskPickerInstance;
 let editTaskPlannedPickerInstance;
 let editTaskGraceEndPickerInstance;
+let addDepsSelector;
+let editDepsSelector;
 
 export async function loadModals() {
     const templates = [
@@ -41,6 +44,18 @@ export async function loadModals() {
     editTaskGraceEndPickerInstance = new DateTimePicker('editGraceEndDatetimePicker');
 
     initTaskSearch();
+
+    addDepsSelector = new DependencySelector(
+        'selectedDependenciesContainer',
+        'openSearchForDeps',
+        'newTaskDependencies' // ← оставляем скрытое поле для совместимости или валидации
+    );
+
+    editDepsSelector = new DependencySelector(
+        'editSelectedDependenciesContainer',
+        'openSearchForEditDeps',
+        'taskDependencies'
+    );
 
     setupModalHandlers();
     setupGlobalModalHandlers();
@@ -107,3 +122,12 @@ export function getAddGraceEndPlannedTaskPicker() {
 export function getEditGraceEndPlannedTaskPicker() {
     return editTaskGraceEndPickerInstance;
 }
+
+export function getAddDepsSelector() {
+    return addDepsSelector;
+}
+
+export function getEditDepsSelector() {
+    return editDepsSelector;
+}
+
