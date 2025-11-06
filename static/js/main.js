@@ -12,6 +12,7 @@ import {
 import { setupSyncHandlers } from './syncManager.js';
 import { setupNotifyHandlers } from './notifyManager.js';
 import { setupThemeManager } from './themeManager.js';
+import { SOFT_BACKGROUNDS } from './utils.js';
 
 let currentStart, currentEnd;
 let currentViewedTask = null;
@@ -417,17 +418,53 @@ function showViewTask(task) {
         });
         try{
         depsContainer.innerHTML = depTasks.map(dep => {
-            const title = dep.title || `#${dep.uuid.substring(0, 8)}`;
-            const disabled = dep.id === null; // если не найдена в кэше — нельзя кликнуть
-            return `
-                <span class="tag-item ${disabled ? '' : 'clickable'}"
-                      ${dep.id ? `data-task-id="${dep.id}"` : ''}
-                      title="${disabled ? 'Задача не найдена в кэше' : 'Показать задачу'}"
-                      style="cursor: ${disabled ? 'default' : 'pointer'}; background: var(--bg-header); border: 1px solid var(--border-accent);">
-                    ${title}
-                </span>
-            `;
-        }).join('');
+        const title = dep.title || `#${dep.uuid.substring(0, 8)}`;
+        const disabled = dep.id === null;
+        // Приоритет → фон
+        const bg = dep.priority ? SOFT_BACKGROUNDS[dep.priority] || '#2a2a2a' : '#2a2a2a';
+        // Статус → рамка / эффекты
+        let border = '1px solid var(--border-accent)';
+        let opacity = '1';
+        let textDecoration = 'none';
+        let boxShadow = 'none';
+        if (dep.status === 'done') {
+            opacity = '0.6';
+            textDecoration = 'line-through';
+        } else if (dep.status === 'inProgress') {
+            border = '1px solid #ffcc00';
+            boxShadow = '0 0 2px #ffcc00';
+        } else if (dep.status === 'overdue') {
+            border = '1px solid var(--danger)';
+            boxShadow = '0 0 3px rgba(255, 68, 68, 0.5)';
+        } else if (dep.status === 'failed') {
+            opacity = '0.5';
+            textDecoration = 'line-through';
+            border = '1px solid #555';
+        }
+        return `
+            <span class="tag-item dependency-badge ${disabled ? '' : 'clickable'}"
+                  ${dep.id ? `data-task-id="${dep.id}"` : ''}
+                  title="${dep.status ? `${dep.title || title} [${dep.status}]` : title}"
+                  style="
+                      cursor: ${disabled ? 'default' : 'pointer'};
+                      background: ${bg};
+                      border: ${border};
+                      opacity: ${opacity};
+                      text-decoration: ${textDecoration};
+                      box-shadow: ${boxShadow};
+                      color: var(--text-main);
+                      padding: 0.2rem 0.5rem;
+                      border-radius: 3px;
+                      font-size: 0.85em;
+                      white-space: nowrap;
+                      max-width: 120px;
+                      overflow: hidden;
+                      text-overflow: ellipsis;
+                  ">
+                ${title}
+            </span>
+        `;
+    }).join('');
         } catch(err) {
             console.log("wrong uuid");
             depsRow.style.display = 'none';

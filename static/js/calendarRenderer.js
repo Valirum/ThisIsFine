@@ -188,50 +188,59 @@ export async function renderCalendar() {
         } else {
             // === Текстовый режим ===
             if (dayTasks.length > 0) {
-                // Сортировка: сначала по времени отображения, затем по приоритету
-                const sortedTasks = [...dayTasks].sort((a, b) => {
-                    const timeA = getDisplayDate(a).getTime();
-                    const timeB = getDisplayDate(b).getTime();
-                    if (timeA !== timeB) {
-                        return timeA - timeB; // по возрастанию времени
-                    }
-                    // При равенстве времени — по приоритету (critical → high → routine)
-                    const order = { routine: 0, high: 1, critical: 2 };
-                    return order[b.priority] - order[a.priority];
+              const sortedTasks = [...dayTasks].sort((a, b) => {
+                const timeA = getDisplayDate(a).getTime();
+                const timeB = getDisplayDate(b).getTime();
+                if (timeA !== timeB) {
+                  return timeA - timeB;
+                }
+                const order = { routine: 0, high: 1, critical: 2 };
+                return order[b.priority] - order[a.priority];
+              });
+              sortedTasks.forEach(task => {
+                const taskLine = document.createElement('div');
+                taskLine.className = 'task-line';
+                taskLine.classList.add(`status-${task.status.toLowerCase()}`);
+
+                const displayDate = getDisplayDate(task);
+                const timeStr = formatTime(displayDate.toISOString());
+
+                // Усечение заголовка
+                const MAX_TITLE_LENGTH = 18;
+                let titlePart = task.title;
+                if (task.title.length > MAX_TITLE_LENGTH) {
+                  titlePart = task.title.substring(0, MAX_TITLE_LENGTH - 1).trim() + '…';
+                }
+
+                // Гибкая разметка: заголовок слева, время — справа
+                taskLine.innerHTML = `
+                  <span class="task-title">${titlePart}</span>
+                  ${timeStr ? `<span class="task-time">${timeStr}</span>` : ''}
+                `;
+
+                // Flex-стили для выравнивания
+                taskLine.style.display = 'flex';
+                taskLine.style.justifyContent = 'space-between';
+                taskLine.style.alignItems = 'center';
+                taskLine.style.gap = '0.5rem';
+                taskLine.style.whiteSpace = 'nowrap';
+                taskLine.style.overflow = 'hidden';
+
+                // Подсказка
+                taskLine.title = `${task.title} [${task.status}] — ${displayDate.toLocaleString('ru-RU')}`;
+
+                // Стили по приоритету (уже существующие)
+                taskLine.style.backgroundColor = SOFT_BACKGROUNDS[task.priority] || '#2a2a2a';
+                taskLine.style.borderLeft = `3px solid ${PRIORITY_COLORS[task.priority] || '#666'}`;
+
+                // Обработчик клика
+                taskLine.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  window.dispatchEvent(new CustomEvent('task-clicked', { detail: { task } }));
                 });
 
-                sortedTasks.forEach(task => {
-                    const taskLine = document.createElement('div');
-                    taskLine.className = 'task-line';
-                    taskLine.classList.add(`status-${task.status.toLowerCase()}`);
-
-                    // Определяем время для отображения
-                    const displayDate = getDisplayDate(task);
-                    const timeStr = formatTime(displayDate.toISOString());
-
-                    // Формируем строку: "Заголовок 15:00"
-                    const MAX_TITLE_LENGTH = 18; // уменьшено, чтобы оставить место для времени
-                    let titlePart = task.title;
-                    if (task.title.length > MAX_TITLE_LENGTH) {
-                        titlePart = task.title.substring(0, MAX_TITLE_LENGTH - 1).trim() + '…';
-                    }
-
-                    const fullText = timeStr ? `${titlePart} ${timeStr}` : titlePart;
-                    taskLine.textContent = fullText;
-                    taskLine.title = `${task.title} [${task.status}] — ${displayDate.toLocaleString('ru-RU')}`;
-
-                    // Стили по приоритету
-                    taskLine.style.backgroundColor = SOFT_BACKGROUNDS[task.priority] || '#2a2a2a';
-                    // console.log(task.title, task.priority, SOFT_BACKGROUNDS[task.priority])
-                    taskLine.style.borderLeft = `3px solid ${PRIORITY_COLORS[task.priority] || '#666'}`;
-
-                    taskLine.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        window.dispatchEvent(new CustomEvent('task-clicked', { detail: { task } }));
-                    });
-
-                    dayEl.appendChild(taskLine);
-                });
+                dayEl.appendChild(taskLine);
+              });
             }
         }
 

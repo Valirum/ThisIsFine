@@ -990,9 +990,9 @@ def spawn_recurring_tasks_endpoint():
 
 @app.route('/tasks/simple', methods=['GET'])
 def get_tasks_simple():
-    tasks = db.session.query(Task.id, Task.uuid, Task.title).all()
+    tasks = db.session.query(Task.id, Task.uuid, Task.title, Task.status, Task.priority).all()
     return jsonify([
-        {"id": t.id, "uuid": t.uuid, "title": t.title}
+        {"id": t.id, "uuid": t.uuid, "title": t.title, "status": t.status, "priority": t.priority}
         for t in tasks
     ]), 200
 
