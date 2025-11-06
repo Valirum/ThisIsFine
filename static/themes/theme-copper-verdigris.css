@@ -1,0 +1,32 @@
+/* name: Медные переливы */
+:root {
+  --bg-main: #050605;
+  --bg-panel: #0c100c;
+  --bg-panel-hover: #161d16;
+  --bg-header: #101510;
+  --bg-input: #0a0f0a;
+  --border-color: #253025;
+  --border-accent: #2a8a5a; /* малахитовый */
+  --text-main: #f0f5f0;
+  --text-muted: #99aa99;
+  --text-accent: #ffaa44; /* тёплый оранжевый — цвет раскалённой меди */
+  --danger: #ff5555;
+  --danger-light: #ff8888;
+  --hover-bg: #202a20;
+  --hover-border: #6acc88;
+  --primary-bg-start: #3a2a1a;
+  --primary-bg-end: #20150a;
+  --primary-border: #aa6622;
+  --primary-hover-bg-start: #5a3a2a;
+  --primary-hover-bg-end: #3a2515;
+  --primary-hover-border: #cc8844;
+  --shadow-low: rgba(5, 15, 10, 0.4);
+  --shadow-medium: rgba(8, 20, 15, 0.5);
+  --shadow-high: rgba(12, 25, 20, 0.6);
+  --overlay-bg: rgba(3, 8, 5, 0.88);
+  --focus-glow: rgba(255, 170, 68, 0.25);
+  --tag-bg: #1a251a;
+  --tag-text: #ffcc88;
+  --tag-hover: #ffddaa;
+  --suggestion-text: #aacc99;
+}

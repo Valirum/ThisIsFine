@@ -6,3 +6,5 @@ python-dateutil
 requests
 #notifications
 python-telegram-bot[job-queue]==20.7
+#logic
+aiohttp

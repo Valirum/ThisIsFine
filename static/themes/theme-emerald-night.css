@@ -1,0 +1,32 @@
+/* name: Изумрудная ночь */
+:root {
+  --bg-main: #000000;
+  --bg-panel: #0a0a0a;
+  --bg-panel-hover: #121212;
+  --bg-header: #0f0f0f;
+  --bg-input: #080808;
+  --border-color: #222;
+  --border-accent: #00aa00;
+  --text-main: #f0fff0;
+  --text-muted: #88aa88;
+  --text-accent: #00ff88; /* яркий неоново-зелёный */
+  --danger: #ff4444;
+  --danger-light: #ff7777;
+  --hover-bg: #1a1a1a;
+  --hover-border: #44ff44;
+  --primary-bg-start: #003a00;
+  --primary-bg-end: #001a00;
+  --primary-border: #00aa00;
+  --primary-hover-bg-start: #005a00;
+  --primary-hover-bg-end: #003a00;
+  --primary-hover-border: #44ff44;
+  --shadow-low: rgba(0, 20, 0, 0.4);
+  --shadow-medium: rgba(0, 30, 0, 0.5);
+  --shadow-high: rgba(0, 40, 0, 0.6);
+  --overlay-bg: rgba(0, 0, 0, 0.9);
+  --focus-glow: rgba(0, 255, 136, 0.3);
+  --tag-bg: #0a1a0a;
+  --tag-text: #00ffcc;
+  --tag-hover: #44ffdd;
+  --suggestion-text: #88ffaa;
+}

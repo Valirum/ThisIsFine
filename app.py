@@ -1,8 +1,9 @@
+import logging
 import uuid
 import argparse
 from flask import Flask, request, jsonify
 from models import db, Task, Tag, TaskStatusLog, PeerDevice
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -777,6 +778,214 @@ def list_themes():
             pass
         themes.append({"name": name, "label": label})
     return jsonify(themes)
+
+
+@app.route('/logic/process-tick', methods=['POST'])
+def process_time_based_transitions():
+    """Выполняет пассивные временные переходы статусов: planned → overdue → failed."""
+    now = datetime.now(timezone.utc)
+    updated_tasks = []
+
+    # 1. Планированные → overdue
+    overdue_candidates = Task.query.filter(
+        Task.status.notin_(["done", "failed"]),
+        Task.due_at <= now
+    ).all()
+    for task in overdue_candidates:
+        if task.status != "overdue":
+            task.status = "overdue"
+            log_entry = TaskStatusLog(task_uuid=task.uuid, status="overdue")
+            db.session.add(log_entry)
+            updated_tasks.append({"uuid": task.uuid, "status": "overdue", "id": task.id})
+
+    # 2. Overdue → failed (по grace_end)
+    failed_candidates = Task.query.filter(
+        Task.status == "overdue",
+        Task.grace_end.isnot(None),
+        Task.grace_end <= now
+    ).all()
+    for task in failed_candidates:
+        task.status = "failed"
+        log_entry = TaskStatusLog(task_uuid=task.uuid, status="failed")
+        db.session.add(log_entry)
+        updated_tasks.append({"uuid": task.uuid, "status": "failed", "id": task.id})
+
+    db.session.commit()
+
+    return jsonify({
+        "processed_at": now.isoformat() + "Z",
+        "updated_tasks": updated_tasks
+    }), 200
+
+
+# Глобальный кэш последних уведомлений (в памяти; в продакшене — Redis)
+NOTIFIED_CACHE = set()
+
+from shared.utils import get_all_tasks
+
+@app.route('/notify/pending', methods=['GET'])
+def get_pending_notifications():
+    """Возвращает задачи, которые требуют уведомления, но ещё не были отправлены."""
+    now = datetime.now(timezone.utc)
+    due_from = "1970-01-01T00:00:00Z"
+    due_to = "2038-01-19T03:14:07Z"
+
+    # Получаем ВСЕ задачи (как в нотифайере ранее)
+    tasks = get_all_tasks()  # ← можно переиспользовать логику из notifier_bot.py, но лучше вынести в shared/utils.py
+
+    pending = []
+    for task in tasks:
+        uuid = task.get("uuid")
+        if not uuid:
+            continue
+        status = task.get("status")
+        deadlines = task.get("deadlines", {})
+        duration = task.get("duration_seconds", 0)
+        task_id = task.get("id")
+
+        key_base = f"{uuid}_"
+
+        # 1. Пора начинать (planned_at наступил)
+        if status == "planned" and deadlines.get("planned_at"):
+            planned_at = datetime.fromisoformat(deadlines["planned_at"].replace("Z", "+00:00"))
+            if planned_at.tzinfo is None:
+                planned_at = planned_at.replace(tzinfo=timezone.utc)
+            if now >= planned_at and f"{uuid}_planned" not in NOTIFIED_CACHE:
+                pending.append({**task, "notification_type": "start"})
+                NOTIFIED_CACHE.add(f"{uuid}_planned")
+
+        # 2. Мало времени до due_at (если есть duration)
+        if duration > 0 and status in ("planned", "inProgress") and deadlines.get("due_at"):
+            due_at = datetime.fromisoformat(deadlines["due_at"].replace("Z", "+00:00"))
+            if due_at.tzinfo is None:
+                due_at = due_at.replace(tzinfo=timezone.utc)
+            warn_time = due_at - timedelta(seconds=duration)
+            if now >= warn_time and f"{uuid}_due_warn" not in NOTIFIED_CACHE:
+                pending.append({**task, "notification_type": "due_warn"})
+                NOTIFIED_CACHE.add(f"{uuid}_due_warn")
+
+        # 3. Просрочка уже обработана в /logic/process-tick → здесь только факт: статус = overdue
+        if status == "overdue" and f"{uuid}_overdue" not in NOTIFIED_CACHE:
+            pending.append({**task, "notification_type": "overdue"})
+            NOTIFIED_CACHE.add(f"{uuid}_overdue")
+
+        # 4. Последнее предупреждение до grace_end
+        if duration > 0 and deadlines.get("grace_end") and status not in ("done", "failed"):
+            grace_end = datetime.fromisoformat(deadlines["grace_end"].replace("Z", "+00:00"))
+            if grace_end.tzinfo is None:
+                grace_end = grace_end.replace(tzinfo=timezone.utc)
+            warn_time = grace_end - timedelta(seconds=duration)
+            if now >= warn_time and f"{uuid}_grace_warn" not in NOTIFIED_CACHE:
+                pending.append({**task, "notification_type": "grace_warn"})
+                NOTIFIED_CACHE.add(f"{uuid}_grace_warn")
+
+        # 5. Failed — тоже уведомление
+        if status == "failed" and f"{uuid}_failed" not in NOTIFIED_CACHE:
+            pending.append({**task, "notification_type": "failed"})
+            NOTIFIED_CACHE.add(f"{uuid}_failed")
+
+    return jsonify(pending), 200
+
+
+def spawn_recurring_tasks():
+    """Порождает следующую задачу в цепи, основываясь на времени первого создания (planned в логах)."""
+    now = datetime.now(timezone.utc)
+    recurring_tasks = Task.query.filter(Task.recurrence_seconds > 0).all()
+
+    for task in recurring_tasks:
+        # === 1. Находим момент первого появления задачи (первый лог со статусом 'planned') ===
+        first_planned_log = TaskStatusLog.query\
+            .filter_by(task_uuid=task.uuid, status="planned")\
+            .order_by(TaskStatusLog.changed_at.asc())\
+            .first()
+
+        if not first_planned_log:
+            # Если лога нет — используем created_at через updated_at (fallback)
+            # Но лучше всего: такого быть не должно, т.к. при создании лог всегда пишется
+            logger = logging.getLogger("spawn_recurring")
+            logger.warning(f"Задача {task.uuid} не имеет записи 'planned' в логах. Пропускаем.")
+            continue
+
+        spawn_time = first_planned_log.changed_at
+        if spawn_time.tzinfo is None:
+            spawn_time = spawn_time.replace(tzinfo=timezone.utc)
+
+        # === 2. Вычисляем, сколько полных периодов прошло с момента создания ===
+        elapsed = (now - spawn_time).total_seconds()
+        periods_passed = int(elapsed // task.recurrence_seconds)
+
+        if periods_passed <= 0:
+            continue  # ещё не прошёл даже один период
+
+        # === 3. Вычисляем ожидаемое время следующего порождения ===
+        next_spawn_time = spawn_time + timedelta(seconds=task.recurrence_seconds * (periods_passed))
+
+        # === 4. Проверяем, создана ли уже задача на этот период ===
+        if task.next_uuid:
+            existing_next = Task.query.filter_by(uuid=task.next_uuid).first()
+            if existing_next is not None:
+                # Уже создана — ничего не делаем
+                continue
+
+        # === 5. Создаём новую задачу ===
+        # Смещение относительно оригинальной задачи
+        delta = timedelta(seconds=task.recurrence_seconds * periods_passed)
+
+        # Смещаем planned_at
+        new_planned = None
+        if task.planned_at:
+            base_planned = task.planned_at
+            if base_planned.tzinfo is None:
+                base_planned = base_planned.replace(tzinfo=timezone.utc)
+            new_planned = base_planned + delta
+
+        # Смещаем due_at
+        base_due = task.due_at
+        if base_due.tzinfo is None:
+            base_due = base_due.replace(tzinfo=timezone.utc)
+        new_due = base_due + delta
+
+        # Смещаем grace_end
+        new_grace = None
+        if task.grace_end:
+            base_grace = task.grace_end
+            if base_grace.tzinfo is None:
+                base_grace = base_grace.replace(tzinfo=timezone.utc)
+            new_grace = base_grace + delta
+
+        # Создаём новую задачу
+        new_task = Task(
+            title=task.title,
+            note=task.note,
+            planned_at=new_planned,
+            due_at=new_due,
+            grace_end=new_grace,
+            duration_seconds=task.duration_seconds,
+            priority=task.priority,
+            recurrence_seconds=task.recurrence_seconds,  # наследуется!
+            dependencies=[],
+            status="planned",
+            tags=task.tags[:],
+            next_uuid=None
+        )
+        db.session.add(new_task)
+        db.session.flush()  # чтобы получить uuid
+
+        # Обновляем next_uuid у текущей задачи
+        task.next_uuid = new_task.uuid
+        db.session.commit()
+
+
+@app.route('/logic/spawn-recurring', methods=['POST'])
+def spawn_recurring_tasks_endpoint():
+    """Эндпоинт для порождения следующих задач в цепи повторяющихся задач."""
+    try:
+        spawn_recurring_tasks()
+        return jsonify({"status": "ok", "message": "Цепи повторяющихся задач обработаны"}), 200
+    except Exception as e:
+        logger = logging.getLogger("spawn_recurring")
+        logger.error(f"Ошибка в spawn_recurring_tasks: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
