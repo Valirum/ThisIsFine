@@ -73,6 +73,70 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
+def create_task_with_log(
+    title,
+    note=None,
+    planned_at=None,
+    due_at=None,
+    grace_end=None,
+    duration_seconds=0,
+    priority='routine',
+    recurrence_seconds=0,
+    dependencies=None,
+    status='planned',
+    tags=None,
+    next_uuid=None,
+    task_uuid=None
+):
+    """
+    Создаёт задачу и гарантированно добавляет запись в TaskStatusLog.
+    Используется как вручную (sync/spawn), так и через API.
+    """
+    if dependencies is None:
+        dependencies = []
+    if tags is None:
+        tags = []
+
+    if task_uuid is None:
+        task_uuid = str(uuid.uuid4())
+
+    task = Task(
+        uuid=task_uuid,
+        title=title,
+        note=note,
+        planned_at=planned_at,
+        due_at=due_at,
+        grace_end=grace_end,
+        duration_seconds=duration_seconds,
+        priority=priority,
+        recurrence_seconds=recurrence_seconds,
+        dependencies=dependencies,
+        status=status,
+        next_uuid=next_uuid
+    )
+
+    # Обработка тегов (как в /tasks)
+    resolved_tags = []
+    for name in tags:
+        name = name.strip().lower()
+        if not name:
+            continue
+        tag = Tag.query.filter_by(name=name).first()
+        if not tag:
+            tag = Tag(name=name)
+            db.session.add(tag)
+        resolved_tags.append(tag)
+    task.tags = resolved_tags
+
+    db.session.add(task)
+    db.session.flush()  # чтобы получить task.uuid
+
+    # === Гарантированное создание лога ===
+    log_entry = TaskStatusLog(task_uuid=task.uuid, status=status)
+    db.session.add(log_entry)
+
+    return task
+
 # Инициализация предиктора тегов при старте
 def init_tag_suggester():
     global tag_suggester
@@ -193,8 +257,7 @@ def create_task():
 
 
     # Создаём задачу
-    task = Task(
-        uuid=task_uuid,
+    task = create_task_with_log(
         title=data['title'],
         note=data.get('note'),
         planned_at=planned_at,
@@ -204,16 +267,11 @@ def create_task():
         priority=data.get('priority', 'routine'),
         recurrence_seconds=int(data.get('recurrence_seconds', 0)),
         dependencies=data.get('dependencies', []),
-        status=data.get('status', 'planned')
+        status='planned',  # ← всегда planned при создании
+        tags=tag_names,  # ← уже нормализованный список имён
+        task_uuid=task_uuid
     )
 
-    task.tags = tags  # SQLAlchemy сам обновит ассоциативную таблицу
-
-    db.session.add(task)
-    db.session.commit()
-
-    log_entry = TaskStatusLog(task_uuid=task.uuid, status="planned")
-    db.session.add(log_entry)
     db.session.commit()
 
     task_title = task.title
@@ -691,7 +749,12 @@ def merge_task_chain(local_root, remote_chain, received_tasks):
     if remote_updated.tzinfo is None:
         remote_updated = remote_updated.replace(tzinfo=timezone.utc)
 
-    if remote_updated > local_root.updated_at:
+    # Нормализуем local_updated к UTC-aware
+    local_updated = local_root.updated_at
+    if local_updated.tzinfo is None:
+        local_updated = local_updated.replace(tzinfo=timezone.utc)
+
+    if remote_updated > local_updated:
         update_task_from_dict(local_root, remote_chain[0])
 
     # 2. Строим локальную цепочку для сравнения
@@ -717,7 +780,12 @@ def merge_task_chain(local_root, remote_chain, received_tasks):
         if remote_updated.tzinfo is None:
             remote_updated = remote_updated.replace(tzinfo=timezone.utc)
 
-        if remote_updated > local_task.updated_at:
+        # Нормализуем local_updated к UTC-aware
+        local_updated = local_root.updated_at
+        if local_updated.tzinfo is None:
+            local_updated = local_updated.replace(tzinfo=timezone.utc)
+
+        if remote_updated > local_updated:
             update_task_from_dict(local_task, remote_task_dict)
             # Обновляем логи статусов
             update_task_logs(local_task.uuid, received_tasks[remote_task_dict['uuid']].get("logs", []))
@@ -1007,50 +1075,36 @@ def get_pending_notifications():
 
 
 def spawn_recurring_tasks():
-    """Порождает следующую задачу в цепи, основываясь на времени первого создания (planned в логах)."""
+    """Порождает следующую задачу в цепи, **гарантированно создавая лог 'planned'**."""
     now = datetime.now(timezone.utc)
     recurring_tasks = Task.query.filter(Task.recurrence_seconds > 0).all()
 
     for task in recurring_tasks:
-        # === 1. Находим момент первого появления задачи (первый лог со статусом 'planned') ===
+        # 1. Найдём первый 'planned' лог — как раньше
         first_planned_log = TaskStatusLog.query\
             .filter_by(task_uuid=task.uuid, status="planned")\
             .order_by(TaskStatusLog.changed_at.asc())\
             .first()
-
         if not first_planned_log:
-            # Если лога нет — используем created_at через updated_at (fallback)
-            # Но лучше всего: такого быть не должно, т.к. при создании лог всегда пишется
-            logger = logging.getLogger("spawn_recurring")
-            logger.warning(f"Задача {task.uuid} не имеет записи 'planned' в логах. Пропускаем.")
+            logging.warning(f"Задача {task.uuid} не имеет записи 'planned' в логах. Пропускаем.")
             continue
 
         spawn_time = first_planned_log.changed_at
         if spawn_time.tzinfo is None:
             spawn_time = spawn_time.replace(tzinfo=timezone.utc)
 
-        # === 2. Вычисляем, сколько полных периодов прошло с момента создания ===
         elapsed = (now - spawn_time).total_seconds()
         periods_passed = int(elapsed // task.recurrence_seconds)
-
         if periods_passed <= 0:
-            continue  # ещё не прошёл даже один период
+            continue
 
-        # === 3. Вычисляем ожидаемое время следующего порождения ===
-        next_spawn_time = spawn_time + timedelta(seconds=task.recurrence_seconds * (periods_passed))
+        # Уже порождена?
+        if task.next_uuid and Task.query.filter_by(uuid=task.next_uuid).first():
+            continue
 
-        # === 4. Проверяем, создана ли уже задача на этот период ===
-        if task.next_uuid:
-            existing_next = Task.query.filter_by(uuid=task.next_uuid).first()
-            if existing_next is not None:
-                # Уже создана — ничего не делаем
-                continue
-
-        # === 5. Создаём новую задачу ===
-        # Смещение относительно оригинальной задачи
+        # Смещение
         delta = timedelta(seconds=task.recurrence_seconds * periods_passed)
 
-        # Смещаем planned_at
         new_planned = None
         if task.planned_at:
             base_planned = task.planned_at
@@ -1058,13 +1112,11 @@ def spawn_recurring_tasks():
                 base_planned = base_planned.replace(tzinfo=timezone.utc)
             new_planned = base_planned + delta
 
-        # Смещаем due_at
         base_due = task.due_at
         if base_due.tzinfo is None:
             base_due = base_due.replace(tzinfo=timezone.utc)
         new_due = base_due + delta
 
-        # Смещаем grace_end
         new_grace = None
         if task.grace_end:
             base_grace = task.grace_end
@@ -1072,8 +1124,8 @@ def spawn_recurring_tasks():
                 base_grace = base_grace.replace(tzinfo=timezone.utc)
             new_grace = base_grace + delta
 
-        # Создаём новую задачу
-        new_task = Task(
+        # === Создаём новую задачу через служебную функцию ===
+        new_task = create_task_with_log(
             title=task.title,
             note=task.note,
             planned_at=new_planned,
@@ -1081,16 +1133,14 @@ def spawn_recurring_tasks():
             grace_end=new_grace,
             duration_seconds=task.duration_seconds,
             priority=task.priority,
-            recurrence_seconds=task.recurrence_seconds,  # наследуется!
-            dependencies=[],
+            recurrence_seconds=task.recurrence_seconds,
+            dependencies=[],  # ← порождённая задача не наследует зависимости
             status="planned",
-            tags=task.tags[:],
+            tags=[tag.name for tag in task.tags],
             next_uuid=None
         )
-        db.session.add(new_task)
-        db.session.flush()  # чтобы получить uuid
 
-        # Обновляем next_uuid у текущей задачи
+        # Обновляем связь
         task.next_uuid = new_task.uuid
         db.session.commit()
 
