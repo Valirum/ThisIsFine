@@ -623,82 +623,201 @@ def sync_with_peer():
 
 
 def merge_sync_data(sync_data):
-    """
-    Принимает список { "task": ..., "logs": [...] }
-    и сливает с локальной БД.
-    """
+    """Сливает данные синхронизации с учётом цепочек периодических задач."""
+    # Шаг 1: Собрать все полученные задачи в словарь по uuid
+    received_tasks = {}
     for item in sync_data:
         task_dict = item.get("task")
-        logs_list = item.get("logs", [])
+        if task_dict and 'uuid' in task_dict:
+            received_tasks[task_dict['uuid']] = item
 
-        if not task_dict or 'uuid' not in task_dict:
-            continue
+    # Шаг 2: Идентифицировать корневые задачи цепочек (те, на которые никто не ссылается)
+    all_uuids = set(received_tasks.keys())
+    referenced_uuids = set()
 
-        existing = Task.query.filter_by(uuid=task_dict['uuid']).first()
+    for uuid, item in received_tasks.items():
+        task_dict = item["task"]
+        next_uuid = task_dict.get("next_uuid")
+        if next_uuid and next_uuid in all_uuids:
+            referenced_uuids.add(next_uuid)
 
-        task = None
+    root_uuids = all_uuids - referenced_uuids
 
-        if existing:
-            local_updated = existing.updated_at
-            if local_updated.tzinfo is None:
-                local_updated = local_updated.replace(tzinfo=timezone.utc)
-            remote_updated = parser.isoparse(task_dict['updated_at'])
-            if remote_updated.tzinfo is None:
-                remote_updated = remote_updated.replace(tzinfo=timezone.utc)
+    # Шаг 3: Для каждой корневой задачи строим полную цепочку
+    chains = []
+    for root_uuid in root_uuids:
+        chain = []
+        current_uuid = root_uuid
 
-            if remote_updated > local_updated:
-                update_task_from_dict(existing, task_dict)
-                task = existing
+        while current_uuid and current_uuid in received_tasks:
+            chain.append(received_tasks[current_uuid]["task"])
+            current_uuid = received_tasks[current_uuid]["task"].get("next_uuid")
+
+        if chain:
+            chains.append(chain)
+
+    # Шаг 4: Слияние цепочек
+    with app.app_context():
+        for chain in chains:
+            root_task_dict = chain[0]
+            local_root = Task.query.filter_by(uuid=root_task_dict['uuid']).first()
+
+            if local_root and local_root.recurrence_seconds > 0:
+                # Цепочка существует локально — сливаем аккуратно
+                merge_task_chain(local_root, chain, received_tasks)
             else:
-                task = existing
+                # Новой цепочки нет локально — импортируем всю цепочку целиком
+                import_full_chain(chain, received_tasks)
+
+        # Шаг 5: Обработка одиночных задач (не в цепочках)
+        processed_uuids = set()
+        for chain in chains:
+            for task in chain:
+                processed_uuids.add(task['uuid'])
+
+        for uuid, item in received_tasks.items():
+            if uuid not in processed_uuids:
+                task_dict = item["task"]
+                logs_list = item.get("logs", [])
+                merge_single_task(task_dict, logs_list)
+
+        db.session.commit()
+
+
+def merge_task_chain(local_root, remote_chain, received_tasks):
+    """Сливает существующую локальную цепочку с удалённой."""
+    # 1. Сначала обновляем корневую задачу
+    remote_updated = parser.isoparse(remote_chain[0]['updated_at'])
+    if remote_updated.tzinfo is None:
+        remote_updated = remote_updated.replace(tzinfo=timezone.utc)
+
+    if remote_updated > local_root.updated_at:
+        update_task_from_dict(local_root, remote_chain[0])
+
+    # 2. Строим локальную цепочку для сравнения
+    local_chain = []
+    current = local_root
+    while current:
+        local_chain.append(current)
+        if current.next_uuid:
+            current = Task.query.filter_by(uuid=current.next_uuid).first()
         else:
+            break
+
+    # 3. Сравниваем цепочки по длине и временным меткам
+    min_len = min(len(local_chain), len(remote_chain))
+
+    # 4. Сливаем задачи по позициям в цепочке
+    for i in range(min_len):
+        local_task = local_chain[i]
+        remote_task_dict = remote_chain[i]
+
+        # Проверяем актуальность по времени обновления
+        remote_updated = parser.isoparse(remote_task_dict['updated_at'])
+        if remote_updated.tzinfo is None:
+            remote_updated = remote_updated.replace(tzinfo=timezone.utc)
+
+        if remote_updated > local_task.updated_at:
+            update_task_from_dict(local_task, remote_task_dict)
+            # Обновляем логи статусов
+            update_task_logs(local_task.uuid, received_tasks[remote_task_dict['uuid']].get("logs", []))
+
+    # 5. Если в удалённой цепочке больше задач — добавляем новые
+    if len(remote_chain) > min_len:
+        last_local = local_chain[-1]
+        for i in range(min_len, len(remote_chain)):
+            remote_task_dict = remote_chain[i]
+            # Создаём новую задачу, сохраняя связь
+            new_task = create_task_from_dict(remote_task_dict)
+            if i == min_len:
+                last_local.next_uuid = new_task.uuid
+            db.session.add(new_task)
+            # Копируем логи статусов
+            update_task_logs(new_task.uuid, received_tasks[remote_task_dict['uuid']].get("logs", []))
+
+
+def import_full_chain(chain, received_tasks):
+    """Импортирует новую цепочку периодических задач."""
+    prev_task = None
+
+    for task_dict in chain:
+        # Проверяем, не существует ли уже эта задача
+        existing = Task.query.filter_by(uuid=task_dict['uuid']).first()
+        if existing:
+            # Если существует, но не в цепочке — обновляем и связываем
+            update_task_from_dict(existing, task_dict)
+            task = existing
+        else:
+            # Создаём новую задачу
             task = create_task_from_dict(task_dict)
+            db.session.add(task)
 
-        # === Дообучение автоподбора тегов ===
-        if task and task.tags:
-            # Собираем данные ДО коммита (но после применения изменений)
-            text = f"{task.title} {task.note or ''}"
-            tags = [tag.name for tag in task.tags]
+        # Связываем с предыдущей задачей
+        if prev_task:
+            prev_task.next_uuid = task.uuid
 
-            def update_suggester():
-                global tag_suggester
-                if tag_suggester is None:
-                    return
-                with suggester_lock:
-                    tag_suggester.add_task(text, tags)
+        # Копируем логи статусов
+        update_task_logs(task.uuid, received_tasks[task_dict['uuid']].get("logs", []))
 
-            threading.Thread(target=update_suggester, daemon=True).start()
+        prev_task = task
 
-        if task:
-            existing_log_keys = set()
-            for log in TaskStatusLog.query.filter_by(task_uuid=task.uuid).all():
-                key = (log.status, log.changed_at.replace(microsecond=0).replace(tzinfo=timezone.utc))
-                existing_log_keys.add(key)
 
-            for log_entry in logs_list:
-                try:
-                    status = log_entry.get("status")
-                    changed_at_str = log_entry.get("changed_at")
-                    if not status or not changed_at_str:
-                        continue
-                    changed_at = parser.isoparse(changed_at_str)
-                    if changed_at.tzinfo is None:
-                        changed_at = changed_at.replace(tzinfo=timezone.utc)
-                    changed_at = changed_at.replace(microsecond=0)
-                    log_key = (status, changed_at)
-                    if log_key not in existing_log_keys:
-                        new_log = TaskStatusLog(
-                            task_uuid=task.uuid,
-                            status=status,
-                            changed_at=changed_at
-                        )
-                        db.session.add(new_log)
-                        existing_log_keys.add(log_key)
-                except Exception:
-                    continue
+def merge_single_task(task_dict, logs_list):
+    """Сливает одиночную задачу, не входящую в цепочку."""
+    existing = Task.query.filter_by(uuid=task_dict['uuid']).first()
 
-    db.session.commit()
+    if existing:
+        local_updated = existing.updated_at
+        if local_updated.tzinfo is None:
+            local_updated = local_updated.replace(tzinfo=timezone.utc)
+        remote_updated = parser.isoparse(task_dict['updated_at'])
+        if remote_updated.tzinfo is None:
+            remote_updated = remote_updated.replace(tzinfo=timezone.utc)
 
+        if remote_updated > local_updated:
+            update_task_from_dict(existing, task_dict)
+            task = existing
+        else:
+            task = existing
+    else:
+        task = create_task_from_dict(task_dict)
+        db.session.add(task)
+
+    # Обновляем логи статусов
+    update_task_logs(task.uuid, logs_list)
+    return task
+
+
+def update_task_logs(task_uuid, logs_list):
+    """Обновляет логи статусов для задачи, избегая дубликатов."""
+    existing_log_keys = set()
+    for log in TaskStatusLog.query.filter_by(task_uuid=task_uuid).all():
+        key = (log.status, log.changed_at.replace(microsecond=0).replace(tzinfo=timezone.utc))
+        existing_log_keys.add(key)
+
+    for log_entry in logs_list:
+        try:
+            status = log_entry.get("status")
+            changed_at_str = log_entry.get("changed_at")
+            if not status or not changed_at_str:
+                continue
+
+            changed_at = parser.isoparse(changed_at_str)
+            if changed_at.tzinfo is None:
+                changed_at = changed_at.replace(tzinfo=timezone.utc)
+            changed_at = changed_at.replace(microsecond=0)
+
+            log_key = (status, changed_at)
+            if log_key not in existing_log_keys:
+                new_log = TaskStatusLog(
+                    task_uuid=task_uuid,
+                    status=status,
+                    changed_at=changed_at
+                )
+                db.session.add(new_log)
+                existing_log_keys.add(log_key)
+        except Exception as e:
+            continue
 
 # Глобальное состояние (в памяти)
 TELEGRAM_CONFIG = {
