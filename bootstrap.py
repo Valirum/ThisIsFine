@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# bootstrap.py — священный ритуал с логированием каждого модуля
+# bootstrap.py — священный ритуал с поддержкой --no-notifier
 
 import os
 import sys
@@ -14,7 +14,7 @@ from pathlib import Path
 DEFAULT_ENV_FILE = Path("tif.env")
 VENV_DIR = Path(".venv")
 REQUIREMENTS = "requirements.txt"
-MODULES = ["app.py", "logic.py", "notifier_bot.py"]
+ALL_MODULES = ["app.py", "logic.py", "notifier_bot.py"]  # ← теперь константа
 ENV_DEFAULT_CONTENT = """# URL базы данных (SQLite по умолчанию)
 DATABASE_URL=sqlite:///./instance/taskdb.sqlite
 
@@ -83,8 +83,8 @@ def launch_module(python_exec, module, env_path, log_queue):
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
-            encoding='utf-8',  # ← ЯВНО УКАЗАТЬ КОДИРОВКУ
-            errors='replace'  # ← заменить невалидные символы, а не падать
+            encoding='utf-8',
+            errors='replace'
         )
         t = threading.Thread(target=enqueue_output, args=(proc.stdout, log_queue, module), daemon=True)
         t.start()
@@ -97,6 +97,7 @@ def launch_module(python_exec, module, env_path, log_queue):
 def main():
     parser = argparse.ArgumentParser(description="Священный ритуал запуска модулей Культа Механикус")
     parser.add_argument("--env", type=Path, default=DEFAULT_ENV_FILE, help="Путь к .env-свитку")
+    parser.add_argument("--no-notifier", "-nn", action="store_true", help="Не запускать notifier_bot.py")
     args = parser.parse_args()
     env_file: Path = args.env
 
@@ -112,12 +113,20 @@ def main():
     create_venv()
     install_deps()
 
+    # === Формирование списка модулей для запуска ===
+    modules_to_run = ALL_MODULES.copy()
+    if args.no_notifier:
+        if "notifier_bot.py" in modules_to_run:
+            modules_to_run.remove("notifier_bot.py")
+            print("📵 notifier_bot.py отключён по флагу --no-notifier")
+        else:
+            print("⚠️  notifier_bot.py отсутствует в списке модулей")
+
     python_exec = get_python()
     log_queue = queue.Queue()
     processes = []
 
-    # Запуск всех модулей
-    for module in MODULES:
+    for module in modules_to_run:
         if not Path(module).exists():
             print(f"Ересь! Модуль {module} не обнаружен.")
             sys.exit(1)
@@ -125,19 +134,20 @@ def main():
         if proc:
             processes.append((module, proc))
 
+    if not processes:
+        print("Нет модулей для запуска. Ритуал завершён.")
+        return
+
     print("Все модули призваны. Ожидание логов...\n" + "="*60)
 
-    # Поток вывода логов в реальном времени
     try:
         while True:
             try:
                 line = log_queue.get(timeout=1)
                 print(line)
-                # Если app.py запущен и слушает — покажем это явно
-                if "Running on http://0.0.0.0" in line or "ThisIsFine запущен на порту" in line:
+                if "ThisIsFine запущен на порту" in line:
                     print("\n🔥 Хвала Омниссии! Сервер активен. Откройте http://localhost:5000")
             except queue.Empty:
-                # Проверим, живы ли процессы
                 if not any(proc.poll() is None for _, proc in processes):
                     print("\nВсе модули завершили работу.")
                     break

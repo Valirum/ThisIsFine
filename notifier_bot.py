@@ -3,16 +3,11 @@
 """
 Микросервис уведомлений для ThisIsFine.
 Работает как фоновый демон, опрашивает основное приложение и отправляет уведомления в Telegram.
-Поддерживает загрузку конфигурации из .env-файла, указанного через --env.
-Автоматически применяет временный env (если существует и новее основного).
 """
 
 import os
-import sys
 import asyncio
 import logging
-import argparse
-from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -23,43 +18,32 @@ from telegram.ext import (
     ContextTypes,
 )
 from dotenv import load_dotenv
+
+load_dotenv("tif.env")
+
+# Попытка загрузить временный env от Flask
 import tempfile
-
-# === Глобальные переменные (инициализируются позже) ===
-task_message_ids = {}
-warned_tasks = set()
-TELEGRAM_BOT_TOKEN = None
-CHAT_ID = None
-THISISFINE_URL = None
-ENV_FILE = None
 TMP_ENV_PATH = os.path.join(tempfile.gettempdir(), 'tif_notifier_tmp.env')
+if os.path.exists(TMP_ENV_PATH):
+    load_dotenv(TMP_ENV_PATH, override=True)
+    print(f"✅ Загружены настройки из временного файла: {TMP_ENV_PATH}")
+else:
+    print("ℹ️ Временный файл не найден, использую tif.env")
 
 
-def load_config(env_path: Path):
-    """Загружает основной .env и, если существует — перекрывает tmp.env."""
-    global TELEGRAM_BOT_TOKEN, CHAT_ID, THISISFINE_URL
+task_message_ids = {}
+# === Настройки ===
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+THISISFINE_URL = os.getenv("THISISFINE_URL", "http://localhost:5000")
 
-    if not env_path.exists():
-        print(f"Ересь! Основной .env не найден: {env_path}")
-        sys.exit(1)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
-    load_dotenv(env_path, override=False)
-
-    tmp_path = Path(TMP_ENV_PATH)
-    if tmp_path.exists():
-        # Проверим: новее ли tmp.env основного?
-        if tmp_path.stat().st_mtime > env_path.stat().st_mtime:
-            print(f"✅ Загружены настройки из временного файла: {TMP_ENV_PATH} (новее {env_path})")
-            load_dotenv(tmp_path, override=True)
-        else:
-            print(f"ℹ️ Временный файл {TMP_ENV_PATH} устарел — используется {env_path}")
-    else:
-        print(f"ℹ️ Временный файл не найден, используется {env_path}")
-
-    TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-    CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-    THISISFINE_URL = os.getenv("THISISFINE_URL", "http://localhost:5000")
-
+# Глобальное хранилище предупреждений
+warned_tasks = set()
 
 def update_task_status(task_id: int, status: str):
     try:
@@ -67,11 +51,14 @@ def update_task_status(task_id: int, status: str):
     except Exception as e:
         logger.error(f"Не удалось обновить статус задачи {task_id}: {e}")
 
-
 def postpone_task(task_id: int, hours: float = 1):
+    """Откладывает planned_at на N часов и сбрасывает warned_tasks для этой задачи."""
     global warned_tasks
+    print("postpone", task_id)
     try:
+        # Получаем текущую задачу
         task_res = requests.get(f"{THISISFINE_URL}/tasks/{task_id}", timeout=10)
+        print(task_res)
         if task_res.status_code != 200:
             return
         task = task_res.json()
@@ -79,17 +66,25 @@ def postpone_task(task_id: int, hours: float = 1):
         if not uuid:
             return
 
+        # Обновляем planned_at
         now = datetime.now(timezone.utc)
         new_planned = now + timedelta(hours=hours)
+
+        # Формируем deadlines как объект (важно!)
         deadlines = task.get("deadlines", {})
         deadlines["planned_at"] = new_planned.isoformat().replace("+00:00", "Z")
 
+        # Отправляем ТОЛЬКО deadlines и status (если нужно)
+        update_data = {
+            "deadlines": deadlines
+        }
         res = requests.put(
             f"{THISISFINE_URL}/tasks/{task_id}",
-            json={"deadlines": deadlines},
+            json=update_data,
             timeout=10
         )
         if res.status_code == 200:
+            # Сбрасываем уведомления для этой задачи
             warned_tasks = {k for k in warned_tasks if not k.startswith(f"{uuid}_")}
             logger.info(f"Задача {task_id} отложена до {new_planned}. Уведомления сброшены.")
         else:
@@ -97,8 +92,9 @@ def postpone_task(task_id: int, hours: float = 1):
     except Exception as e:
         logger.error(f"Ошибка при откладывании задачи {task_id}: {e}")
 
-
+# --- Фоновая задача (работает в том же loop, что и бот) ---
 async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
+    """Опрашивает эндпоинт /notify/pending и отправляет уведомления, если они есть."""
     global warned_tasks
     bot = context.bot
     chat_id = CHAT_ID
@@ -123,11 +119,16 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
 
         task_id = task["id"]
         title = task["title"]
+        status = task.get("status")
+        deadlines = task.get("deadlines", {})
+        duration = task.get("duration_seconds", 0)
         notification_type = task.get("notification_type")
+
         warn_key = f"{uuid}_{notification_type}"
         if warn_key in warned_tasks:
-            continue
+            continue  # Уже отправляли — защита от дублей
 
+        # === Формируем текст и кнопки ===
         text = ""
         btns = None
 
@@ -146,24 +147,39 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
 
         elif notification_type == "due_warn":
             text = f"⚠️ У задачи «{title}» осталось мало времени!"
-            btns = InlineKeyboardMarkup([
-                [InlineKeyboardButton("▶️ Начать", callback_data=f"start_{task_id}")],
-                [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
-            ])
+            if status != "inProgress":
+                btns = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("▶️ Начать", callback_data=f"start_{task_id}")],
+                    [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
+                ])
+            else:
+                btns = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
+                ])
 
         elif notification_type == "overdue":
             text = f"🔥 Задача «{title}» ПРОСРОЧЕНА!"
-            btns = InlineKeyboardMarkup([
-                [InlineKeyboardButton("▶️ Начать", callback_data=f"start_{task_id}")],
-                [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
-            ])
+            if status != "inProgress":
+                btns = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("▶️ Начать", callback_data=f"start_{task_id}")],
+                    [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
+                ])
+            else:
+                btns = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
+                ])
 
         elif notification_type == "grace_warn":
             text = f"🚨 Последний шанс для «{title}»!"
-            btns = InlineKeyboardMarkup([
-                [InlineKeyboardButton("▶️ Начать", callback_data=f"start_{task_id}")],
-                [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
-            ])
+            if status != "inProgress":
+                btns = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("▶️ Начать", callback_data=f"start_{task_id}")],
+                    [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
+                ])
+            else:
+                btns = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ Готово", callback_data=f"done_{task_id}")]
+                ])
 
         elif notification_type == "failed":
             text = f"💀 Срок для «{title}» истёк. Задача помечена как FAILED."
@@ -175,8 +191,10 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
             logger.warning(f"Неизвестный тип уведомления: {notification_type}")
             continue
 
+        # === Отправка ===
         try:
             msg = await bot.send_message(chat_id=chat_id, text=text, reply_markup=btns)
+            # Сохраняем message_id для последующей очистки кнопок
             if uuid not in task_message_ids:
                 task_message_ids[uuid] = []
             task_message_ids[uuid].append({
@@ -189,8 +207,11 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
 
     warned_tasks = current_warned
 
-
 async def clear_task_messages(bot, chat_id, uuid, action_type=None):
+    """
+    Удаляет кнопки из сообщений по задаче.
+    :param action_type: None → все кнопки, "start" → только кнопки "Начать", "done" → только "Готово"
+    """
     if uuid not in task_message_ids:
         return
 
@@ -198,14 +219,24 @@ async def clear_task_messages(bot, chat_id, uuid, action_type=None):
     for item in task_message_ids[uuid]:
         msg_id = item["msg_id"]
         msg_type = item["type"]
+
+        # Удаляем кнопки, если:
+        # - action_type=None (все), ИЛИ
+        # - action_type совпадает с типом сообщения
         if action_type is None or msg_type == action_type:
             try:
-                await bot.edit_message_reply_markup(chat_id=chat_id, message_id=msg_id, reply_markup=None)
+                await bot.edit_message_reply_markup(
+                    chat_id=chat_id,
+                    message_id=msg_id,
+                    reply_markup=None
+                )
             except Exception as e:
                 logger.warning(f"Не удалось очистить сообщение {msg_id}: {e}")
         else:
+            # Сохраняем сообщения другого типа
             messages_to_keep.append(item)
 
+    # Обновляем или удаляем из памяти
     if action_type is None:
         del task_message_ids[uuid]
     else:
@@ -214,7 +245,7 @@ async def clear_task_messages(bot, chat_id, uuid, action_type=None):
         else:
             del task_message_ids[uuid]
 
-
+# --- Обработчики ---
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -235,16 +266,31 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await query.edit_message_text("❌ Не удалось обновить статус задачи.")
 
+
+
     elif data.startswith("postpone_"):
+
         parts = data.split("_")
+
         task_id = int(parts[1])
-        minutes = int(parts[2]) if len(parts) > 2 else 60
+
+        minutes = int(parts[2]) if len(parts) > 2 else 60  # fallback на 60 мин
+
         hours = minutes / 60.0
+
         task_res = requests.get(f"{THISISFINE_URL}/tasks/{task_id}", timeout=10)
+
         if task_res.status_code == 200:
             task = task_res.json()
             postpone_task(task_id, hours=hours)
-            delay_str = {15: "15 мин", 30: "30 мин", 60: "1 час", 120: "2 часа"}.get(minutes, f"{hours:g} ч")
+            if minutes < 60:
+                delay_str = f"{minutes} мин"
+            elif minutes == 60:
+                delay_str = "1 час"
+            elif minutes == 120:
+                delay_str = "2 часа"
+            else:
+                delay_str = f"{hours:g} ч"
             await query.edit_message_text(f"🕗 Задача «{task['title']}» отложена на {delay_str}.")
         else:
             await query.edit_message_text("❌ Не удалось отложить задачу.")
@@ -257,50 +303,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             uuid = task.get("uuid")
             update_task_status(task_id, "done")
             if uuid:
-                await clear_task_messages(bot, chat_id, uuid, action_type=None)
+                await clear_task_messages(bot, chat_id, uuid, action_type=None)  # удаляем все кнопки
             await query.edit_message_text(f"🎉 Задача «{task['title']}» выполнена!")
         else:
             await query.edit_message_text("❌ Не удалось завершить задачу.")
 
-
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🔔 Бот уведомлений ThisIsFine активен.")
 
-
+# --- Запуск ---
 def main():
-    global ENV_FILE
-
-    parser = argparse.ArgumentParser(description='Микросервис уведомлений ThisIsFine')
-    parser.add_argument('--env', type=Path, default=Path("tif.env"), help='Путь к основному .env-файлу')
-    args = parser.parse_args()
-
-    ENV_FILE = args.env
-    load_config(ENV_FILE)
-
     if not TELEGRAM_BOT_TOKEN:
-        print("⚠️ TELEGRAM_BOT_TOKEN не задан. Бот запущен, но будет ждать конфигурации.")
-        print("ℹ️ Задайте токен через UI (/notify/config) и перезапустите бота с тем же --env.")
+        raise ValueError("Укажите TELEGRAM_BOT_TOKEN в переменных окружения")
 
-    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN or "dummy").build()
+    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start_handler))
     app.add_handler(CallbackQueryHandler(button_handler))
 
+    # Регистрируем фоновую задачу через job queue
     job_queue = app.job_queue
     job_queue.run_repeating(check_and_notify, interval=30, first=10)
 
-    logger = logging.getLogger(__name__)
-    logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
-    logger.info(f"Бот уведомлений запущен с env={ENV_FILE}")
-
-    try:
-        app.run_polling()
-    except telegram.error.InvalidToken:
-        if not TELEGRAM_BOT_TOKEN:
-            logger.warning("Токен отсутствует. Бот ожидает конфигурацию. Завершение.")
-            sys.exit(0)
-        else:
-            raise
-
+    logger.info("Бот уведомлений запущен")
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
