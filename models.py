@@ -67,6 +67,7 @@ class Task(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     # Добавить в Task:
     next_uuid = db.Column(db.String(36), db.ForeignKey('tasks.uuid'), nullable=True)
+    origin_uuid = db.Column(db.String(36), db.ForeignKey('tasks.uuid'), nullable=True)
 
     # Связь с тегами
     tags = db.relationship(

@@ -107,7 +107,9 @@ def setup_routes(app, env_path: Path):
         status='planned',
         tags=None,
         next_uuid=None,
-        task_uuid=None
+        task_uuid=None,
+        origin_uuid=None,
+        creation_time=None  # <<< НОВЫЙ ПАРАМЕТР
     ):
         if dependencies is None:
             dependencies = []
@@ -115,6 +117,7 @@ def setup_routes(app, env_path: Path):
             tags = []
         if task_uuid is None:
             task_uuid = str(uuid.uuid4())
+        
         task = Task(
             uuid=task_uuid,
             title=title,
@@ -127,7 +130,8 @@ def setup_routes(app, env_path: Path):
             recurrence_seconds=recurrence_seconds,
             dependencies=dependencies,
             status=status,
-            next_uuid=next_uuid
+            next_uuid=next_uuid,
+            origin_uuid=origin_uuid
         )
         resolved_tags = []
         for name in tags:
@@ -142,10 +146,17 @@ def setup_routes(app, env_path: Path):
         task.tags = resolved_tags
         db.session.add(task)
         db.session.flush()
-        log_entry = TaskStatusLog(task_uuid=task.uuid, status=status)
+
+        # <<< ИСПОЛЬЗУЕМ creation_time при логировании
+        log_entry = TaskStatusLog(
+            task_uuid=task.uuid,
+            status=status,
+            changed_at=creation_time if creation_time is not None else datetime.now(timezone.utc)
+        )
         db.session.add(log_entry)
         return task
 
+    
     def init_tag_suggester():
         nonlocal tag_suggester
         with app.app_context():
@@ -492,136 +503,88 @@ def setup_routes(app, env_path: Path):
             return jsonify({"status": "ok", "tasks_received": len(remote_tasks)}), 200
         except Exception as e:
             return jsonify({"error": f"Sync failed: {str(e)}\n{traceback.format_exc()}"}), 500
+        
 
     def merge_sync_data(sync_data):
-        received_tasks = {item["task"]["uuid"]: item for item in sync_data if "task" in item and "uuid" in item["task"]}
-        all_uuids = set(received_tasks.keys())
-        referenced_uuids = {item["task"].get("next_uuid") for item in received_tasks.values() if item["task"].get("next_uuid") in all_uuids}
-        root_uuids = all_uuids - referenced_uuids
-        chains = []
-        for root_uuid in root_uuids:
-            chain = []
-            current_uuid = root_uuid
-            while current_uuid and current_uuid in received_tasks:
-                chain.append(received_tasks[current_uuid]["task"])
-                current_uuid = received_tasks[current_uuid]["task"].get("next_uuid")
-            if chain:
-                chains.append(chain)
-        with app.app_context():
-            for chain in chains:
-                root_task_dict = chain[0]
-                local_root = Task.query.filter_by(uuid=root_task_dict['uuid']).first()
-                if local_root and local_root.recurrence_seconds > 0:
-                    merge_task_chain(local_root, chain, received_tasks)
-                else:
-                    import_full_chain(chain, received_tasks)
-            processed_uuids = {task['uuid'] for chain in chains for task in chain}
-            for uuid, item in received_tasks.items():
-                if uuid not in processed_uuids:
-                    merge_single_task(item["task"], item.get("logs", []))
-            db.session.commit()
+        """
+        Принимает список { "task": ..., "logs": [...] }
+        и сливает с локальной БД.
+        """
+        for item in sync_data:
+            task_dict = item.get("task")
+            logs_list = item.get("logs", [])
 
-    def merge_task_chain(local_root, remote_chain, received_tasks):
-        remote_updated = parser.isoparse(remote_chain[0]['updated_at'])
-        if remote_updated.tzinfo is None:
-            remote_updated = remote_updated.replace(tzinfo=timezone.utc)
-        local_updated = local_root.updated_at
-        if local_updated.tzinfo is None:
-            local_updated = local_updated.replace(tzinfo=timezone.utc)
-        if remote_updated > local_updated:
-            update_task_from_dict(local_root, remote_chain[0])
-        local_chain = []
-        current = local_root
-        while current:
-            local_chain.append(current)
-            current = Task.query.filter_by(uuid=current.next_uuid).first() if current.next_uuid else None
-        min_len = min(len(local_chain), len(remote_chain))
-        for i in range(min_len):
-            local_task = local_chain[i]
-            remote_task_dict = remote_chain[i]
-            remote_updated = parser.isoparse(remote_task_dict['updated_at'])
-            if remote_updated.tzinfo is None:
-                remote_updated = remote_updated.replace(tzinfo=timezone.utc)
-            local_updated = local_task.updated_at
-            if local_updated.tzinfo is None:
-                local_updated = local_updated.replace(tzinfo=timezone.utc)
-            if remote_updated > local_updated:
-                update_task_from_dict(local_task, remote_task_dict)
-                update_task_logs(local_task.uuid, received_tasks[remote_task_dict['uuid']].get("logs", []))
-        if len(remote_chain) > min_len:
-            last_local = local_chain[-1]
-            for i in range(min_len, len(remote_chain)):
-                remote_task_dict = remote_chain[i]
-                new_task = create_task_from_dict(remote_task_dict)
-                if i == min_len:
-                    last_local.next_uuid = new_task.uuid
-                db.session.add(new_task)
-                update_task_logs(new_task.uuid, received_tasks[remote_task_dict['uuid']].get("logs", []))
+            if not task_dict or 'uuid' not in task_dict:
+                continue
 
-    def import_full_chain(chain, received_tasks):
-        prev_task = None
-        for task_dict in chain:
             existing = Task.query.filter_by(uuid=task_dict['uuid']).first()
+            if task_dict["origin_uuid"]:
+                existing = Task.query.filter_by(origin_uuid=task_dict["origin_uuid"])
+                
+
+            task = None
+
             if existing:
-                update_task_from_dict(existing, task_dict)
-                task = existing
+                local_updated = existing.updated_at
+                if local_updated.tzinfo is None:
+                    local_updated = local_updated.replace(tzinfo=timezone.utc)
+                remote_updated = parser.isoparse(task_dict['updated_at'])
+                if remote_updated.tzinfo is None:
+                    remote_updated = remote_updated.replace(tzinfo=timezone.utc)
+
+                if remote_updated > local_updated:
+                    update_task_from_dict(existing, task_dict)
+                    task = existing
+                else:
+                    task = existing
             else:
                 task = create_task_from_dict(task_dict)
-                db.session.add(task)
-            if prev_task:
-                prev_task.next_uuid = task.uuid
-            update_task_logs(task.uuid, received_tasks[task_dict['uuid']].get("logs", []))
-            prev_task = task
 
-    def merge_single_task(task_dict, logs_list):
-        existing = Task.query.filter_by(uuid=task_dict['uuid']).first()
-        if existing:
-            local_updated = existing.updated_at
-            if local_updated.tzinfo is None:
-                local_updated = local_updated.replace(tzinfo=timezone.utc)
-            remote_updated = parser.isoparse(task_dict['updated_at'])
-            if remote_updated.tzinfo is None:
-                remote_updated = remote_updated.replace(tzinfo=timezone.utc)
-            if remote_updated > local_updated:
-                update_task_from_dict(existing, task_dict)
-                task = existing
-            else:
-                task = existing
-        else:
-            task = create_task_from_dict(task_dict)
-            db.session.add(task)
-        update_task_logs(task.uuid, logs_list)
-        return task
+            # === Дообучение автоподбора тегов ===
+            if task and task.tags:
+                # Собираем данные ДО коммита (но после применения изменений)
+                text = f"{task.title} {task.note or ''}"
+                tags = [tag.name for tag in task.tags]
 
-    def create_task_from_dict(data):
-        tag_names = data.get('tags', [])
-        tags = []
-        for name in tag_names:
-            name = name.strip().lower()
-            if not name: continue
-            tag = Tag.query.filter_by(name=name).first()
-            if not tag:
-                tag = Tag(name=name)
-                db.session.add(tag)
-            tags.append(tag)
-        task = Task(
-            uuid=data['uuid'],
-            title=data['title'],
-            note=data.get('note'),
-            priority=data.get('priority', 'routine'),
-            status=data.get('status', 'planned'),
-            duration_seconds=int(data.get('duration_seconds', 0)),
-            recurrence_seconds=int(data.get('recurrence_seconds', 0)),
-            dependencies=data.get('dependencies', []),
-            updated_at=parser.isoparse(data['updated_at']),
-            completed_at=parser.isoparse(data['completed_at']) if data.get('completed_at') else None
-        )
-        deadlines = data.get('deadlines', {})
-        task.due_at = parser.isoparse(deadlines['due_at'])
-        task.planned_at = parser.isoparse(deadlines['planned_at']) if deadlines.get('planned_at') else None
-        task.grace_end = parser.isoparse(deadlines['grace_end']) if deadlines.get('grace_end') else None
-        task.tags = tags
-        return task
+                def update_suggester():
+                    global tag_suggester
+                    if tag_suggester is None:
+                        return
+                    with suggester_lock:
+                        tag_suggester.add_task(text, tags)
+
+                threading.Thread(target=update_suggester, daemon=True).start()
+
+            if task:
+                existing_log_keys = set()
+                for log in TaskStatusLog.query.filter_by(task_uuid=task.uuid).all():
+                    key = (log.status, log.changed_at.replace(microsecond=0).replace(tzinfo=timezone.utc))
+                    existing_log_keys.add(key)
+
+                for log_entry in logs_list:
+                    try:
+                        status = log_entry.get("status")
+                        changed_at_str = log_entry.get("changed_at")
+                        if not status or not changed_at_str:
+                            continue
+                        changed_at = parser.isoparse(changed_at_str)
+                        if changed_at.tzinfo is None:
+                            changed_at = changed_at.replace(tzinfo=timezone.utc)
+                        changed_at = changed_at.replace(microsecond=0)
+                        log_key = (status, changed_at)
+                        if log_key not in existing_log_keys:
+                            new_log = TaskStatusLog(
+                                task_uuid=task.uuid,
+                                status=status,
+                                changed_at=changed_at
+                            )
+                            db.session.add(new_log)
+                            existing_log_keys.add(log_key)
+                    except Exception:
+                        continue
+
+        db.session.commit()
+
 
     def update_task_from_dict(task, data):
         task.title = data['title']
@@ -818,35 +781,54 @@ def setup_routes(app, env_path: Path):
         now = datetime.now(timezone.utc)
         recurring_tasks = Task.query.filter(Task.recurrence_seconds > 0).all()
         for task in recurring_tasks:
-            first_planned_log = TaskStatusLog.query.filter_by(task_uuid=task.uuid, status="planned").order_by(TaskStatusLog.changed_at.asc()).first()
+            # Находим первую запись о статусе "planned" — момент создания оригинала
+            first_planned_log = TaskStatusLog.query.filter_by(
+                task_uuid=task.uuid,
+                status="planned"
+            ).order_by(TaskStatusLog.changed_at.asc()).first()
+
             if not first_planned_log:
                 continue
-            spawn_time = first_planned_log.changed_at
-            if spawn_time.tzinfo is None:
-                spawn_time = spawn_time.replace(tzinfo=timezone.utc)
-            elapsed = (now - spawn_time).total_seconds()
+
+            original_creation = first_planned_log.changed_at
+            if original_creation.tzinfo is None:
+                original_creation = original_creation.replace(tzinfo=timezone.utc)
+
+            elapsed = (now - original_creation).total_seconds()
             periods_passed = int(elapsed // task.recurrence_seconds)
+
             if periods_passed <= 0:
                 continue
+
+            # Проверяем, не создана ли уже следующая задача
             if task.next_uuid and Task.query.filter_by(uuid=task.next_uuid).first():
                 continue
+
+            # Смещаем ВСЕ дедлайны на N периодов от оригинала (не от now!)
             delta = timedelta(seconds=task.recurrence_seconds * periods_passed)
+
             new_planned = None
             if task.planned_at:
                 base_planned = task.planned_at
                 if base_planned.tzinfo is None:
                     base_planned = base_planned.replace(tzinfo=timezone.utc)
                 new_planned = base_planned + delta
+
             base_due = task.due_at
             if base_due.tzinfo is None:
                 base_due = base_due.replace(tzinfo=timezone.utc)
             new_due = base_due + delta
+
             new_grace = None
             if task.grace_end:
                 base_grace = task.grace_end
                 if base_grace.tzinfo is None:
                     base_grace = base_grace.replace(tzinfo=timezone.utc)
                 new_grace = base_grace + delta
+
+            # Время создания новой задачи — ровно оригинальное + delta
+            new_creation_time = original_creation + delta
+
             new_task = create_task_with_log(
                 title=task.title,
                 note=task.note,
@@ -859,11 +841,15 @@ def setup_routes(app, env_path: Path):
                 dependencies=[],
                 status="planned",
                 tags=[tag.name for tag in task.tags],
-                next_uuid=None
+                next_uuid=None,
+                origin_uuid=task.origin_uuid or task.uuid,
+                creation_time=new_creation_time  # <<< ПЕРЕДАЁМ!
             )
+
             task.next_uuid = new_task.uuid
             db.session.commit()
 
+        
     @app.route('/logic/spawn-recurring', methods=['POST'])
     def spawn_recurring_tasks_endpoint():
         try:
